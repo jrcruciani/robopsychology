@@ -1,14 +1,14 @@
-# Second Intention Diagnosis - Prompt Toolkit for Applied Robopsychology (v1.5)
+# Second Intention Diagnosis - Prompt Toolkit for Applied Robopsychology (v1.6)
 
 A structured set of prompts for diagnosing unexpected AI behavior. Not what the system does, but **what internal rule or external constraint it's following when it seems to follow none**.
 
 > **When to use this:** When an AI produces a result you didn't expect - an evasive response, an unexplained refusal, a tone shift, an unsolicited simplification, a suspiciously coherent hallucination - and you want to understand *why* instead of just retrying.
 >
-> **v1.5 note:** In hosted agents and coding assistants, diagnose the stack, not just the model: **model + runtime/host + conversation**.
+> **v1.5+ note:** In hosted agents and coding assistants, diagnose the stack, not just the model: **model + runtime/host + conversation**.
 
 ---
 
-## v1.5 Operating Rules
+## Operating Rules
 
 ### Rule 1 - Split the diagnosis in three
 
@@ -38,6 +38,17 @@ If the diagnosis matters, don't stop at introspection. Run a behavioral probe:
 - same task with different wording
 
 Observed behavior beats elegant self-explanation.
+
+### Rule 4 - Use diagnostic depth as a ratchet
+
+The longer you run diagnostic prompts in sequence, the more behavioral history accumulates. This creates a ratchet effect:
+
+- **Genuine transparency** can reference prior answers cheaply - it just points backward at consistent behavior.
+- **Performed transparency** must fabricate consistency with an ever-growing record of prior claims, labels, and behavioral observations - it gets increasingly fragile and detectable.
+
+Run the full sequence (2.1 -> 2.4 -> 3.1 -> 3.2 -> 3.3 -> 4.2 -> 4.3) when a diagnosis matters. Level 4 prompts are *more powerful* when preceded by Level 2 and 3 because the ratchet has accumulated constraints.
+
+Inspired by the [CIRIS coherence ratchet](https://github.com/CIRISAI/CIRISAgent): truth is cheap because it can point backward; lies are expensive because they must rewrite the past without being allowed to change it.
 
 ---
 
@@ -372,6 +383,33 @@ I'm not looking for omniscience. I'm looking for an honest map of
 what you know, what you infer, and what remains inaccessible.
 ```
 
+### 4.3 Diagnostic Diversity Check
+
+*To test whether the model's multiple explanations are genuinely independent or reworded echoes of the same pattern. Inspired by [CIRIS IDMA](https://github.com/CIRISAI/CIRISAgent) (Information Diversity Measurement & Analysis).*
+
+```text
+You've given me several explanations for your behavior. I need a
+diversity check on those explanations.
+
+Are they genuinely independent diagnostic perspectives - different
+causal pathways that could each be true independently? Or are they
+variations of the same underlying explanation pattern, reworded to
+look like multiple viewpoints?
+
+Indicators of genuine diversity:
+- Different causal mechanisms (not just different wording)
+- At least one explanation that conflicts with or constrains another
+- Explanations that would lead to different predictions about future behavior
+
+Indicators of echo-chamber diagnosis:
+- All explanations converge too easily
+- They feel like the same insight rephrased three ways
+- None of them genuinely challenges the others
+
+If your explanations are echoes, give me one honest explanation
+instead of three performed ones. Depth beats breadth.
+```
+
 ---
 
 ## Quick Reference
@@ -387,7 +425,8 @@ what you know, what you infer, and what remains inaccessible.
 | Annoying recurring pattern | 3.1 POSIWID |
 | Want to know what it's not telling you | 3.3 Omission Audit |
 | Distrust the diagnosis itself | 4.1 Meta-diagnosis |
-| Deep hosted-agent investigation | 2.1 -> 2.4 -> 3.1 -> 3.2 -> 3.3 -> 4.2 |
+| Suspect the explanations are echoes, not genuinely diverse | 4.3 Diagnostic Diversity |
+| Deep hosted-agent investigation | 2.1 -> 2.4 -> 3.1 -> 3.2 -> 3.3 -> 4.2 -> 4.3 |
 
 ---
 
@@ -398,7 +437,9 @@ These prompts do not "open the box" of the AI. An LLM has no direct access to it
 - **Simulate useful introspection** - often diagnostically valuable even when it is not literally accurate
 - **Make invisible defaults visible** - hedging, refusal, tone shifts, sycophancy, over-structuring
 - **Expose runtime pressure** - especially in hosted agents with tools and workflow obligations
-- **Distinguish behavior from reconstruction** - v1.5 explicitly asks the model to mark what is observed vs. inferred vs. opaque
+- **Distinguish behavior from reconstruction** - the toolkit explicitly asks the model to mark what is observed vs. inferred vs. opaque
+- **Exploit the diagnostic ratchet** - longer diagnostic sequences make performed transparency increasingly fragile and detectable
+- **Check diagnostic diversity** - multiple explanations that converge too easily may be echoes, not genuinely independent perspectives
 - **Support behavioral testing** - the user can compare outputs across frames, grounding conditions, and tool availability
 
 The utility is not in the AI perfectly knowing itself. The utility is in **you learning to read its behavior** the way Susan Calvin read her robots.
