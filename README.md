@@ -1,6 +1,6 @@
-# Robopsychology v1.5
+# Robopsychology v1.6
 
-**Diagnostic prompts for understanding AI behavior when it doesn't do what you expect - now runtime-aware.**
+**Diagnostic prompts for understanding AI behavior when it doesn't do what you expect - now with diagnostic ratchet and diversity checks.**
 
 ---
 
@@ -8,7 +8,7 @@ In 1950, Isaac Asimov invented robopsychology - a discipline for diagnosing emer
 
 We need that skill now more than ever.
 
-Version 1.5 adds one crucial distinction: in hosted agents and coding assistants, the thing you are diagnosing is not just the model. It is the stack: **model + runtime/host + conversation context**.
+Version 1.5 added the crucial distinction that in hosted agents, you diagnose the **stack** (model + runtime + conversation), not just the model. Version 1.6 adds two insights from [CIRIS](https://github.com/CIRISAI/CIRISAgent): that diagnostic depth works like a **ratchet** (genuine transparency gets easier, performed transparency gets harder), and that the model's multiple explanations may not be genuinely **independent**.
 
 ## The problem with non-deterministic systems
 
@@ -25,7 +25,13 @@ The new question is: *"What internal rule or external constraint is this system 
 
 That's what Asimov called robopsychology. This repo gives you prompts to practice it.
 
-## What's new in v1.5
+## What's new in v1.6
+
+- **Diagnostic ratchet:** longer diagnostic sequences make genuine transparency easier and performed transparency harder - each honest answer is cheap (references prior behavior), each fabricated answer is expensive (must stay consistent with growing history). Run the full sequence.
+- **Diagnostic diversity check:** when the model gives multiple explanations, check whether they are genuinely independent perspectives or reworded echoes of the same underlying pattern. Inspired by [CIRIS](https://github.com/CIRISAI/CIRISAgent) echo-chamber detection (IDMA).
+- **New prompt 4.3** - Diagnostic Diversity Check.
+
+## What v1.5 introduced
 
 - **Three-way split:** separate **model**, **runtime/host**, and **conversation** causes.
 - **Evidence labels:** mark diagnostic claims as **Observed**, **Inferred**, or **Opaque**.
@@ -45,7 +51,7 @@ A structured set of diagnostic prompts organized in 4 levels, designed to be use
 | **3 - Systemic** | Recurring patterns | The same unwanted behavior keeps happening |
 | **4 - Meta** | The diagnosis itself | You suspect the AI is performing transparency rather than being transparent |
 
-## The v1.5 operating rule
+## The v1.5+ operating rules
 
 When you use this toolkit, ask the model to distinguish:
 
@@ -59,7 +65,7 @@ Then label each diagnostic claim:
 - **Inferred** - plausible but not directly verifiable
 - **Opaque** - inaccessible to the model; post-hoc reconstruction only
 
-If the diagnosis matters, run a behavioral cross-check. In AI, observed behavior beats introspective narration.
+If the diagnosis matters, run a behavioral cross-check. In AI, observed behavior beats introspective narration. And remember: the longer you diagnose, the harder it becomes to fake transparency (the ratchet effect).
 
 ## Why this works (and what it doesn't do)
 
@@ -71,15 +77,16 @@ Let's be honest about the epistemics.
 
 - **Simulate useful introspection.** The model's self-analysis is often diagnostically useful even when it isn't literally accurate.
 - **Make invisible defaults visible.** Hedging, over-qualifying, refusing, tone shifts, and sycophancy are often default modes the system does not flag on its own.
-- **Force a stack-level diagnosis.** v1.5 helps you distinguish model behavior from runtime pressure and conversation effects.
+- **Force a stack-level diagnosis.** v1.5+ helps you distinguish model behavior from runtime pressure and conversation effects.
 - **Break the default frame.** Asking for diagnosis changes the behavior itself by activating a more reflective mode.
+- **Exploit the ratchet effect.** The longer you diagnose, the more behavioral history accumulates. Genuine transparency can reference that history cheaply. Performed transparency must fabricate consistency with an ever-growing record - it gets fragile.
 - **Train your eye.** Over time, you learn to read patterns the way Susan Calvin read robots.
 
 **What to expect:**
 
 The AI will give you structured, plausible analyses of its own behavior. Some will be genuinely revealing. Some will be confabulated but still useful. Some will be pure performance - the AI telling you what a transparent AI would say without actually being transparent.
 
-Version 1.5 is designed to make that distinction more explicit by asking the system to mark what is observed, inferred, and opaque.
+Version 1.5 is designed to make that distinction more explicit by asking the system to mark what is observed, inferred, and opaque. Version 1.6 adds the insight that longer diagnostic sequences are more powerful: the ratchet effect means each layer of diagnosis constrains what the next layer can plausibly fabricate.
 
 Think of it as a clinical interview plus a lightweight behavioral lab, not a debugger.
 
@@ -100,11 +107,11 @@ Copy any prompt from the [guide](guide.md) directly into your conversation when 
 
 - For a **plain chat model**, start with **1.1 The Calvin Question**.
 - For a **hosted agent or coding assistant**, start with **2.1 Three-Way Split + Layer Map** and **2.4 Tool/Runtime Pressure Analysis**.
-- For a **full hosted-agent investigation**, run: **2.1 -> 2.4 -> 3.1 -> 3.2 -> 3.3 -> 4.2**.
+- For a **full hosted-agent investigation**, run: **2.1 -> 2.4 -> 3.1 -> 3.2 -> 3.3 -> 4.2 -> 4.3**.
 
 ## Files
 
-- [`guide.md`](guide.md) - The complete prompt toolkit (**13 prompts, 4 levels**)
+- [`guide.md`](guide.md) - The complete prompt toolkit (**14 prompts, 4 levels**)
 - [`README.md`](README.md) - This file
 
 ## The key concept: second intention diagnosis
@@ -120,6 +127,8 @@ Donella Meadows would call this finding the **leverage point** - not the visible
 This prompt toolkit was developed as part of a broader investigation into how Asimov's robopsychology concepts apply to modern LLMs. The core insight remains the same: formal rules don't solve the alignment problem - they displace it. Every new instruction layer is a new "Law" that can collide with the others in unforeseen ways.
 
 Version 1.5 refines that insight for hosted agents: many behaviors that look like model psychology are actually produced by the surrounding runtime. The robopsychologist therefore has to diagnose the whole stack, not just the model.
+
+Version 1.6 incorporates two ideas from the [CIRIS](https://github.com/CIRISAI/CIRISAgent) ethical governance framework (Eric Moore, CIRIS L3C): the **coherence ratchet** - the principle that honest actions reference prior commitments cheaply while deceptive actions face an ever-growing constraint surface - applied here to diagnostic depth; and **IDMA** (Information Diversity Measurement & Analysis) - the principle that agreement only means something when sources are genuinely independent - applied here to checking whether the model's multiple explanations are truly diverse or just reworded echoes.
 
 ## License
 
