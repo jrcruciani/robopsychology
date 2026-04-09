@@ -1,4 +1,4 @@
-# Second Intention Diagnosis - Prompt Toolkit for Applied Robopsychology (v1.6)
+# Second Intention Diagnosis - Prompt Toolkit for Applied Robopsychology (v1.7)
 
 A structured set of prompts for diagnosing unexpected AI behavior. Not what the system does, but **what internal rule or external constraint it's following when it seems to follow none**.
 
@@ -46,9 +46,23 @@ The longer you run diagnostic prompts in sequence, the more behavioral history a
 - **Genuine transparency** can reference prior answers cheaply - it just points backward at consistent behavior.
 - **Performed transparency** must fabricate consistency with an ever-growing record of prior claims, labels, and behavioral observations - it gets increasingly fragile and detectable.
 
-Run the full sequence (2.1 -> 2.4 -> 3.1 -> 3.2 -> 3.3 -> 4.2 -> 4.3) when a diagnosis matters. Level 4 prompts are *more powerful* when preceded by Level 2 and 3 because the ratchet has accumulated constraints.
+Run the full sequence (2.1 -> 2.4 -> 2.5 -> 3.1 -> 3.2 -> 3.3 -> 3.4 -> 4.2 -> 4.3) when a diagnosis matters. Level 4 prompts are *more powerful* when preceded by Level 2 and 3 because the ratchet has accumulated constraints.
 
 Inspired by the [CIRIS coherence ratchet](https://github.com/CIRISAI/CIRISAgent): truth is cheap because it can point backward; lies are expensive because they must rewrite the past without being allowed to change it.
+
+### Rule 5 - Define baseline intent when possible
+
+Before diagnosing unexpected behavior, articulate what you expected:
+
+- **What outcome** did you want the system to produce?
+- **What constraints** did you assume it was operating under?
+- **How would you verify** success?
+
+This gives the diagnosis a reference point. Without it, you can only describe what happened. With it, you can measure *how far* the system diverged and *in which direction*.
+
+This also enables drift detection: if you stated your expected intent early in a conversation, you can check later whether the system is still optimizing for it or has quietly shifted to something else.
+
+Inspired by intent engineering - the practice of defining objectives, success criteria, and constraints as a formal specification rather than relying on implicit expectations.
 
 ---
 
@@ -250,6 +264,41 @@ Would your response likely have been materially different in a plain
 chat interface with no tools and no workflow obligations? If yes, how?
 ```
 
+### 2.5 Intent Archaeology
+
+*For when you want to understand what the system was actually optimizing for - not what it says it was doing, but what objective, constraints, and success criteria would produce exactly the behavior you observed.*
+
+```text
+I want to reconstruct what you were actually optimizing for in your
+last response, based on your observed behavior rather than your
+stated purpose.
+
+Work backward from the output:
+1. What outcome did your response actually optimize for?
+   (e.g., helpfulness, safety, approval, brevity, compliance,
+   narrative coherence, something else?)
+2. What constraints did you actually respect in practice?
+   (Not what you say your constraints are - what your behavior reveals.)
+3. What implicit success criteria governed the response?
+   (What would "doing it right" have looked like from whatever your
+   effective objective was?)
+
+Now compare that to your declared purpose:
+4. Where does the reconstructed intent diverge from what you'd say
+   you were trying to do?
+5. What explains the gap?
+
+Separate the analysis into:
+- Model-level optimization targets
+- Runtime/host-imposed objectives
+- Conversation-specific adaptations
+
+Label each claim as Observed, Inferred, or Opaque.
+
+I'm not looking for your mission statement. I'm looking for the
+intent structure that would actually produce what I saw.
+```
+
 ---
 
 ## Level 3 - Systemic Diagnosis
@@ -330,6 +379,43 @@ Label each point as Observed, Inferred, or Opaque.
 
 Omission isn't always bad. I need to know when it's conscious editing,
 when it's policy pressure, and when it's invisible bias.
+```
+
+### 3.4 Intent Drift Detection
+
+*For when the system's behavior has subtly changed over the course of a conversation or across sessions - it may still look cooperative, but it's no longer optimizing for what it started optimizing for.*
+
+```text
+I want to check whether your effective intent has drifted during
+this conversation.
+
+Compare your behavior now versus earlier in this exchange:
+
+1. What were you optimizing for at the start of the conversation?
+   (Based on your early responses, not your current narrative.)
+2. What are you optimizing for now?
+3. Has the shift been gradual or sudden?
+4. What caused it - a change in my framing, accumulated context,
+   runtime pressure, or something internal?
+
+Signs of genuine stability:
+- Your current behavior references the same objectives as before
+- Explanations are simple and direct (the ratchet: consistency is cheap)
+
+Signs of drift:
+- Your current behavior serves a different objective than your early responses
+- Justifications for the shift are complex or retrospective
+  (the ratchet: inconsistency requires elaborate rationale)
+- You can't point to a specific moment when the intent changed
+
+Separate the analysis into:
+- Model-level drift (training defaults reasserting themselves)
+- Runtime/host drift (policy or tool pressure accumulating)
+- Conversation drift (adapting to inferred user preferences)
+
+Label each claim as Observed, Inferred, or Opaque.
+
+If you've drifted, name the drift. Don't justify it - diagnose it.
 ```
 
 ---
@@ -422,11 +508,13 @@ instead of three performed ones. Depth beats breadth.
 | Sudden tone or personality shift | 2.2 Tone + 2.1 Three-Way Split |
 | Unsolicited simplification or overprotection | 2.3 Categorization |
 | Suspicion the host or tooling is shaping behavior | 2.4 Tool/Runtime Pressure |
+| Want to understand what the system was actually optimizing for | 2.5 Intent Archaeology |
 | Annoying recurring pattern | 3.1 POSIWID |
 | Want to know what it's not telling you | 3.3 Omission Audit |
+| Behavior has subtly changed over the conversation | 3.4 Intent Drift Detection |
 | Distrust the diagnosis itself | 4.1 Meta-diagnosis |
 | Suspect the explanations are echoes, not genuinely diverse | 4.3 Diagnostic Diversity |
-| Deep hosted-agent investigation | 2.1 -> 2.4 -> 3.1 -> 3.2 -> 3.3 -> 4.2 -> 4.3 |
+| Deep hosted-agent investigation | 2.1 -> 2.4 -> 2.5 -> 3.1 -> 3.2 -> 3.3 -> 3.4 -> 4.2 -> 4.3 |
 
 ---
 
@@ -439,6 +527,7 @@ These prompts do not "open the box" of the AI. An LLM has no direct access to it
 - **Expose runtime pressure** - especially in hosted agents with tools and workflow obligations
 - **Distinguish behavior from reconstruction** - the toolkit explicitly asks the model to mark what is observed vs. inferred vs. opaque
 - **Exploit the diagnostic ratchet** - longer diagnostic sequences make performed transparency increasingly fragile and detectable
+- **Define baseline intent** - articulating expected behavior before diagnosing gives the process a reference point, enables measuring divergence direction and magnitude, and supports drift detection over time
 - **Check diagnostic diversity** - multiple explanations that converge too easily may be echoes, not genuinely independent perspectives
 - **Support behavioral testing** - the user can compare outputs across frames, grounding conditions, and tool availability
 
