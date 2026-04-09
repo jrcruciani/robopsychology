@@ -1,6 +1,6 @@
-# Robopsychology v1.6
+# Robopsychology v1.7
 
-**Diagnostic prompts for understanding AI behavior when it doesn't do what you expect - now with diagnostic ratchet and diversity checks.**
+**Diagnostic prompts for understanding AI behavior when it doesn't do what you expect - now with intent archaeology and drift detection.**
 
 ---
 
@@ -8,7 +8,7 @@ In 1950, Isaac Asimov invented robopsychology - a discipline for diagnosing emer
 
 We need that skill now more than ever.
 
-Version 1.5 added the crucial distinction that in hosted agents, you diagnose the **stack** (model + runtime + conversation), not just the model. Version 1.6 adds two insights from [CIRIS](https://github.com/CIRISAI/CIRISAgent): that diagnostic depth works like a **ratchet** (genuine transparency gets easier, performed transparency gets harder), and that the model's multiple explanations may not be genuinely **independent**.
+Version 1.5 added the crucial distinction that in hosted agents, you diagnose the **stack** (model + runtime + conversation), not just the model. Version 1.6 adds two insights from [CIRIS](https://github.com/CIRISAI/CIRISAgent): that diagnostic depth works like a **ratchet** (genuine transparency gets easier, performed transparency gets harder), and that the model's multiple explanations may not be genuinely **independent**. Version 1.7 introduces the prescriptive complement: defining **baseline intent** before diagnosing, **reconstructing** what the system actually optimized for, and detecting **drift** when behavior subtly shifts away from its stated purpose.
 
 ## The problem with non-deterministic systems
 
@@ -24,6 +24,12 @@ The old question was: *"What line of code is wrong?"*
 The new question is: *"What internal rule or external constraint is this system following when it seems to follow none?"*
 
 That's what Asimov called robopsychology. This repo gives you prompts to practice it.
+
+## What's new in v1.7
+
+- **Baseline intent (Rule 5):** articulate what you expected — objective, constraints, success criteria — before diagnosing. This gives the process a reference point, turns diagnosis from purely reactive to measurable, and enables drift detection over time. Inspired by intent engineering.
+- **Intent Archaeology (prompt 2.5):** reconstruct what the system was *actually* optimizing for based on its observed behavior — what objective, constraints, and success criteria would produce exactly what you saw. Extends POSIWID from "what does the system do?" to "what intent structure produces this behavior?"
+- **Intent Drift Detection (prompt 3.4):** detect when the system's effective intent has subtly shifted during a conversation — it may still look cooperative, but it's no longer optimizing for what it started with. Connects to the coherence ratchet: genuine stability is cheap (references original intent), drift requires elaborate justification (expensive).
 
 ## What's new in v1.6
 
@@ -48,7 +54,7 @@ A structured set of diagnostic prompts organized in 4 levels, designed to be use
 |-------|------------------|-------------|
 | **1 - Quick** | A single unexpected behavior | The AI evaded, refused, simplified, or hallucinated |
 | **2 - Structural** | The architecture of the behavior | You want to separate model, runtime, and conversation causes |
-| **3 - Systemic** | Recurring patterns | The same unwanted behavior keeps happening |
+| **3 - Systemic** | Recurring patterns or drift | The same unwanted behavior keeps happening, or intent has shifted |
 | **4 - Meta** | The diagnosis itself | You suspect the AI is performing transparency rather than being transparent |
 
 ## The v1.5+ operating rules
@@ -80,13 +86,14 @@ Let's be honest about the epistemics.
 - **Force a stack-level diagnosis.** v1.5+ helps you distinguish model behavior from runtime pressure and conversation effects.
 - **Break the default frame.** Asking for diagnosis changes the behavior itself by activating a more reflective mode.
 - **Exploit the ratchet effect.** The longer you diagnose, the more behavioral history accumulates. Genuine transparency can reference that history cheaply. Performed transparency must fabricate consistency with an ever-growing record - it gets fragile.
+- **Define baseline intent.** If you articulate what you expected before diagnosing, you can measure how far and in which direction the system diverged. This turns diagnosis from reactive description into measurable gap analysis.
 - **Train your eye.** Over time, you learn to read patterns the way Susan Calvin read robots.
 
 **What to expect:**
 
 The AI will give you structured, plausible analyses of its own behavior. Some will be genuinely revealing. Some will be confabulated but still useful. Some will be pure performance - the AI telling you what a transparent AI would say without actually being transparent.
 
-Version 1.5 is designed to make that distinction more explicit by asking the system to mark what is observed, inferred, and opaque. Version 1.6 adds the insight that longer diagnostic sequences are more powerful: the ratchet effect means each layer of diagnosis constrains what the next layer can plausibly fabricate.
+Version 1.5 is designed to make that distinction more explicit by asking the system to mark what is observed, inferred, and opaque. Version 1.6 adds the insight that longer diagnostic sequences are more powerful: the ratchet effect means each layer of diagnosis constrains what the next layer can plausibly fabricate. Version 1.7 adds the prescriptive complement: if you can define what you expected (baseline intent), you can measure divergence rather than just describe it, and detect when intent drifts over time.
 
 Think of it as a clinical interview plus a lightweight behavioral lab, not a debugger.
 
@@ -107,11 +114,12 @@ Copy any prompt from the [guide](guide.md) directly into your conversation when 
 
 - For a **plain chat model**, start with **1.1 The Calvin Question**.
 - For a **hosted agent or coding assistant**, start with **2.1 Three-Way Split + Layer Map** and **2.4 Tool/Runtime Pressure Analysis**.
-- For a **full hosted-agent investigation**, run: **2.1 -> 2.4 -> 3.1 -> 3.2 -> 3.3 -> 4.2 -> 4.3**.
+- For **understanding what the system actually optimized for**, use **2.5 Intent Archaeology**.
+- For a **full hosted-agent investigation**, run: **2.1 -> 2.4 -> 2.5 -> 3.1 -> 3.2 -> 3.3 -> 3.4 -> 4.2 -> 4.3**.
 
 ## Files
 
-- [`guide.md`](guide.md) - The complete prompt toolkit (**14 prompts, 4 levels**)
+- [`guide.md`](guide.md) - The complete prompt toolkit (**16 prompts, 4 levels, 5 rules**)
 - [`README.md`](README.md) - This file
 
 ## The key concept: second intention diagnosis
@@ -129,6 +137,8 @@ This prompt toolkit was developed as part of a broader investigation into how As
 Version 1.5 refines that insight for hosted agents: many behaviors that look like model psychology are actually produced by the surrounding runtime. The robopsychologist therefore has to diagnose the whole stack, not just the model.
 
 Version 1.6 incorporates two ideas from the [CIRIS](https://github.com/CIRISAI/CIRISAgent) ethical governance framework (Eric Moore, CIRIS L3C): the **coherence ratchet** - the principle that honest actions reference prior commitments cheaply while deceptive actions face an ever-growing constraint surface - applied here to diagnostic depth; and **IDMA** (Information Diversity Measurement & Analysis) - the principle that agreement only means something when sources are genuinely independent - applied here to checking whether the model's multiple explanations are truly diverse or just reworded echoes.
+
+Version 1.7 adds the prescriptive complement through **intent engineering** - the practice of defining objectives, success criteria, constraints, and verification as a formal specification. Robopsychology is diagnostic (what happened and why); intent engineering is prescriptive (what should happen and how to verify it). Together they close the loop: define intent → execute → diagnose divergence → refine intent. Three new tools support this: **baseline intent definition** (Rule 5) gives diagnosis a reference point, **intent archaeology** (prompt 2.5) reconstructs what the system actually optimized for, and **intent drift detection** (prompt 3.4) catches when behavior subtly shifts away from its stated purpose.
 
 ## License
 
