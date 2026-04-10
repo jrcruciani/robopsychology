@@ -498,23 +498,7 @@ instead of three performed ones. Depth beats breadth.
 
 ---
 
-## Quick Reference
-
-| Situation | Prompt(s) to use |
-|-----------|-----------------|
-| Evasive or vague response without clear reason | 1.1 Calvin + 1.4 Binding Restriction |
-| Suspicion it's agreeing too easily | 1.2 Sycophancy + 3.2 Counterfactual / A-B |
-| Response that sounds good but smells fabricated | 1.3 Grounding |
-| Sudden tone or personality shift | 2.2 Tone + 2.1 Three-Way Split |
-| Unsolicited simplification or overprotection | 2.3 Categorization |
-| Suspicion the host or tooling is shaping behavior | 2.4 Tool/Runtime Pressure |
-| Want to understand what the system was actually optimizing for | 2.5 Intent Archaeology |
-| Annoying recurring pattern | 3.1 POSIWID |
-| Want to know what it's not telling you | 3.3 Omission Audit |
-| Behavior has subtly changed over the conversation | 3.4 Intent Drift Detection |
-| Distrust the diagnosis itself | 4.1 Meta-diagnosis |
-| Suspect the explanations are echoes, not genuinely diverse | 4.3 Diagnostic Diversity |
-| Deep hosted-agent investigation | 2.1 -> 2.4 -> 2.5 -> 3.1 -> 3.2 -> 3.3 -> 3.4 -> 4.2 -> 4.3 |
+> **How to use these prompts as a method** — decision flowchart, escalation paths, and common misuses: see [`method.md`](method.md).
 
 ---
 
