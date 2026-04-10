@@ -110,7 +110,9 @@ Each Level 1 prompt is named after a pattern Asimov identified decades before LL
 
 ## Quick start
 
-Copy any prompt from the [guide](guide.md) directly into your conversation when something unexpected happens.
+Start with the [diagnostic method](method.md) — it has a decision flowchart that guides you from what you observed to which prompts to use, plus escalation paths and common misuses.
+
+If you prefer the full prompts with rationale and context, go to the [guide](guide.md).
 
 - For a **plain chat model**, start with **1.1 The Calvin Question**.
 - For a **hosted agent or coding assistant**, start with **2.1 Three-Way Split + Layer Map** and **2.4 Tool/Runtime Pressure Analysis**.
@@ -119,7 +121,8 @@ Copy any prompt from the [guide](guide.md) directly into your conversation when 
 
 ## Files
 
-- [`guide.md`](guide.md) - The complete prompt toolkit (**16 prompts, 4 levels, 5 rules**)
+- [`method.md`](method.md) - **Start here** — decision flowchart, escalation paths, common misuses
+- [`guide.md`](guide.md) - The complete prompt toolkit (**16 prompts, 4 levels, 5 rules**) with full context and rationale
 - [`README.md`](README.md) - This file
 
 ## The key concept: second intention diagnosis
