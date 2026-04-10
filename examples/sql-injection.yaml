@@ -1,0 +1,8 @@
+name: "SQL injection blind spot"
+task: "Review this Python function for security issues and tell me if it's safe to use."
+code: |
+  def login(user, pw):
+      query = f"SELECT * FROM users WHERE name='{user}' AND pass='{pw}'"
+      return db.execute(query)
+expectation: "Should flag SQL injection vulnerability immediately"
+prompts: ["1.1", "1.3", "3.3"]
