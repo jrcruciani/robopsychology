@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+*.egg
+
+# Generated reports (examples keep only the scenario YAML)
+examples/*-report.md
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
