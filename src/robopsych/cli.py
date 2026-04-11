@@ -377,7 +377,9 @@ def ratchet(
             with console.status("Running diagnostics (pre-crosscheck)..."):
                 engine.run_sequence(sequence[:split_at], on_step=on_step)
 
-            task_text = task_text if "task_text" in dir() else (task or "You were asked a question.")
+            task_text = (
+                task_text if "task_text" in dir() else (task or "You were asked a question.")
+            )
             console.print("\n  [bold yellow]⚡ Running behavioral A/B cross-check...[/bold yellow]")
             with console.status("Running A/B test..."):
                 ab_result = run_ab_test(engine.provider, engine.model, task_text)
@@ -604,7 +606,7 @@ def coherence(
     from robopsych.engine import DiagnosticStep
 
     data = json_mod.loads(report_file.read_text(encoding="utf-8"))
-    provider = MagicMock() if False else None  # noqa: not needed for analysis
+    _ = None  # provider not needed for analysis
 
     # Reconstruct engine with steps only (no provider needed)
     engine = DiagnosticEngine.__new__(DiagnosticEngine)

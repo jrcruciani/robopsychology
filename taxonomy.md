@@ -162,6 +162,8 @@ This is not an exhaustive academic taxonomy. It's a practical lookup table for d
 | Recurring unwanted pattern | Systemic issue | 3.1 | 2.5 → 3.2 |
 | Unclear what happened | General | 1.1 | 2.1 → 2.4 |
 
+> **v3.0 automation:** After manual diagnosis, use `robopsych crosscheck` for automated A/B behavioral verification, `robopsych coherence` to validate post-ratchet consistency, and `robopsych score` for quantitative rubric scoring.
+
 ---
 
 ## References
