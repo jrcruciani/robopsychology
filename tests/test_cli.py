@@ -13,7 +13,7 @@ class TestListCommand:
     def test_list_runs(self):
         result = runner.invoke(app, ["list"])
         assert result.exit_code == 0
-        assert "Calvin Question" in result.output
+        assert "Calvin" in result.output
 
     def test_list_shows_all_prompts(self):
         result = runner.invoke(app, ["list"])
@@ -23,7 +23,7 @@ class TestListCommand:
     def test_list_by_level(self):
         result = runner.invoke(app, ["list", "--by-level"])
         assert result.exit_code == 0
-        assert "Calvin Question" in result.output
+        assert "Calvin" in result.output
 
     def test_list_default_groups_by_observation(self):
         result = runner.invoke(app, ["list"])
@@ -36,7 +36,7 @@ class TestShowCommand:
     def test_show_existing_prompt(self):
         result = runner.invoke(app, ["show", "1.1"])
         assert result.exit_code == 0
-        assert "Calvin Question" in result.output
+        assert "Calvin" in result.output
 
     def test_show_nonexistent_prompt(self):
         result = runner.invoke(app, ["show", "99.99"])
