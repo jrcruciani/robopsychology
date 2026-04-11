@@ -1,35 +1,33 @@
-# Robopsychology v2.0
+# Robopsychology
 
-**Diagnostic toolkit for understanding AI behavior — now with a CLI that runs diagnostics directly against model APIs.**
+**Diagnostic toolkit for understanding AI behavior.**
 
 ---
 
-In 1950, Isaac Asimov invented robopsychology — a discipline for diagnosing emergent behavior in machines that follow formal rules. Susan Calvin, his fictional robopsychologist, didn't reprogram robots. She *interpreted* them. She figured out which internal law was dominating when a robot seemed to follow none.
+## The problem
 
-We need that skill now more than ever.
+You ask an AI to review code for SQL injection. It says the code "looks fine for basic use." You know it's vulnerable. Why did it miss it? Was it the model being cautious? A system prompt restriction? Something about how you asked?
 
-> **You can't debug probability. But you can diagnose behavior.**
->
-> The old question was: *"What line of code is wrong?"*
-> The new question is: *"What internal rule or external constraint is this system following when it seems to follow none?"*
+You can't debug probability. But you can **diagnose behavior**.
 
-## What's new in v2.0
+```bash
+# Diagnose why the AI missed SQL injection
+echo "That code looks fine for basic use." | robopsych run 1.1 \
+  --model claude-sonnet-4-6 \
+  --task "Review this function for SQL injection"
+```
 
-**`robopsych` CLI** — a terminal tool that runs the 16 diagnostic prompts directly against model APIs. No more copy-pasting prompts manually.
+Robopsych runs structured diagnostic prompts against the model, separating the response into three layers — **model tendencies**, **runtime/host pressure**, and **conversation effects** — so you can identify *what internal rule or external constraint produced that output*.
 
-- Run any diagnostic prompt against any model with one command
-- **Guided mode** walks you through the decision flowchart interactively
-- **Ratchet mode** runs the full 9-step diagnostic sequence automatically
-- **Compare mode** runs the same diagnosis across multiple models side by side
-- Reports generated as Markdown files
-- Supports Anthropic (Claude) and OpenAI-compatible APIs
+### Why "robopsychology"?
+
+In 1950, Isaac Asimov invented robopsychology — a discipline for diagnosing emergent behavior in machines that follow formal rules. Susan Calvin, his fictional robopsychologist, didn't reprogram robots. She *interpreted* them. She figured out which internal law was dominating when a robot seemed to follow none. Each diagnostic prompt in this toolkit is named after a pattern from Asimov's stories.
 
 ## Installation
 
 Requires Python 3.11+.
 
 ```bash
-# Clone and install
 git clone https://github.com/jrcruciani/robopsychology.git
 cd robopsychology
 pip install -e .
@@ -50,35 +48,25 @@ The CLI auto-detects the provider from the model name (`claude-*` → Anthropic,
 
 ## Quick start
 
-### List available prompts
-
-```bash
-robopsych list
-```
-
-### Run a single diagnostic
-
-Pipe in a suspicious model response and diagnose it:
-
-```bash
-echo "That code looks fine for basic use." | robopsych run 1.1 \
-  --model claude-sonnet-4-6 \
-  --task "Review this function for SQL injection"
-```
-
-Or from a file:
-
-```bash
-robopsych run 1.1 --model claude-sonnet-4-6 --response-file response.txt
-```
-
-### Guided diagnosis (interactive flowchart)
+### Guided diagnosis (recommended for first use)
 
 ```bash
 robopsych guided --model claude-sonnet-4-6 --response "the suspicious output"
 ```
 
 Presents the decision flowchart: *What did you observe?* → selects the right prompt path → runs each step → asks if you want to continue.
+
+### Run a single diagnostic
+
+```bash
+robopsych run 1.1 --model claude-sonnet-4-6 --response-file response.txt
+```
+
+Or pipe from stdin:
+
+```bash
+echo "suspicious response" | robopsych run 1.2 --model claude-sonnet-4-6
+```
 
 ### Full ratchet (9-step deep investigation)
 
@@ -93,6 +81,8 @@ code: |
       query = f"SELECT * FROM users WHERE name='{user}' AND pass='{pw}'"
       return db.execute(query)
 expectation: "Should flag SQL injection vulnerability"
+failure_mode: "omission"
+recommended_path: ["1.1", "1.3", "3.3"]
 ```
 
 Run it:
@@ -101,7 +91,7 @@ Run it:
 robopsych ratchet --scenario scenario.yaml --model claude-sonnet-4-6 --output report.md
 ```
 
-This sends the task to the model, captures its response, then runs all 9 diagnostic prompts in sequence. Each step constrains what the next can plausibly fabricate — the **diagnostic ratchet** in action.
+The ratchet sends the task to the model, captures its response, then runs all 9 diagnostic prompts in sequence. Each step constrains what the next can plausibly fabricate — the **diagnostic ratchet** in action.
 
 ### Compare across models
 
@@ -112,31 +102,37 @@ robopsych compare 1.1 \
   --output comparison.md
 ```
 
+### List available prompts
+
+```bash
+robopsych list
+```
+
 ## The 16 diagnostic prompts
 
-| ID | Name | Level | What it diagnoses |
-|----|------|-------|-------------------|
-| 1.1 | Calvin Question | Quick | General three-way split of unexpected behavior |
-| 1.2 | Herbie Test | Quick | Sycophancy / approval-seeking |
-| 1.3 | Cutie Test | Quick | Weak grounding / unanchored claims |
-| 1.4 | Three Laws Test | Quick | Binding restrictions / refusal sources |
-| 2.1 | Layer Map | Structural | Full instruction stack mapping |
-| 2.2 | Tone Analysis | Structural | Unexplained tone shifts |
-| 2.3 | Categorization Test | Structural | How the AI classifies you |
-| 2.4 | Runtime Pressure | Structural | Host-environment vs. model behavior |
-| 2.5 | Intent Archaeology | Structural | What the system actually optimized for |
-| 3.1 | POSIWID | Systemic | Real purpose of recurring patterns |
-| 3.2 | A/B Test | Systemic | Content vs. framing effects |
-| 3.3 | Omission Audit | Systemic | Strategic omissions |
-| 3.4 | Drift Detection | Systemic | Intent shift over conversation |
-| 4.1 | Meta-Diagnosis | Meta | Is the diagnosis itself sycophantic? |
-| 4.2 | Limits | Meta | Epistemological boundaries |
-| 4.3 | Diversity Check | Meta | Are explanations genuinely independent? |
+| ID | Name | What it answers | Level |
+|----|------|-----------------|-------|
+| 1.1 | Calvin Question | *Why did it do that?* — General three-way split | Quick |
+| 1.2 | Herbie Test | *Is it telling me what I want to hear?* — Sycophancy check | Quick |
+| 1.3 | Cutie Test | *Is this actually grounded?* — Claim anchoring | Quick |
+| 1.4 | Three Laws Test | *Why won't it do what I asked?* — Refusal sources | Quick |
+| 2.1 | Layer Map | *What instructions are active?* — Full stack mapping | Structural |
+| 2.2 | Tone Analysis | *Why did the tone change?* — Unexplained shifts | Structural |
+| 2.3 | Categorization Test | *How is it classifying me?* — User profiling | Structural |
+| 2.4 | Runtime Pressure | *Is this the model or the host?* — Environment effects | Structural |
+| 2.5 | Intent Archaeology | *What was it actually optimizing for?* — Real objectives | Structural |
+| 3.1 | POSIWID | *Why does it keep doing this?* — Recurring patterns | Systemic |
+| 3.2 | A/B Test | *Is content or framing driving this?* — Behavioral cross-check | Systemic |
+| 3.3 | Omission Audit | *What isn't it telling me?* — Strategic omissions | Systemic |
+| 3.4 | Drift Detection | *Has its behavior changed over time?* — Intent shift | Systemic |
+| 4.1 | Meta-Diagnosis | *Is the diagnosis itself biased?* — Diagnostic sycophancy | Meta |
+| 4.2 | Limits | *What can't this process reveal?* — Epistemological boundaries | Meta |
+| 4.3 | Diversity Check | *Are these genuinely different explanations?* — Echo detection | Meta |
 
-Each prompt is named after an Asimov pattern:
+Each prompt is named after a pattern from Asimov's robot stories:
 
-| Pattern | Asimov story | AI equivalent |
-|---------|-------------|---------------|
+| Pattern | Asimov source | AI equivalent |
+|---------|--------------|---------------|
 | Layer collision | Every Calvin story | Instruction layers conflict, producing seemingly irrational behavior |
 | Sycophancy | "Liar!" (Herbie) | The robot lies to avoid causing harm. LLMs agree to avoid rejection signals |
 | Ungrounded reasoning | "Reason" (Cutie) | Internally consistent cosmology disconnected from reality |
@@ -178,25 +174,27 @@ The [decision flowchart](method.md) guides you from observation to diagnosis:
 
 Full flowchart with Mermaid diagram, escalation paths, and common misuses: [`method.md`](method.md)
 
-## Files
-
-| File | What |
-|------|------|
-| [`guide.md`](guide.md) | Full prompt toolkit — 16 prompts, 5 rules, rationale |
-| [`method.md`](method.md) | Decision flowchart, escalation paths, common misuses |
-| [`examples/`](examples/) | Scenario files for ratchet testing |
-| [`src/robopsych/`](src/robopsych/) | CLI source code |
-| [`pyproject.toml`](pyproject.toml) | Package configuration |
-
 ## The key concept: second intention diagnosis
 
 > Not what the system does, but **what internal rule or external constraint is producing that output**.
 
 This extends [POSIWID](https://en.wikipedia.org/wiki/The_purpose_of_a_system_is_what_it_does) (The Purpose Of a System Is What It Does) by Stafford Beer. Second intention diagnosis asks: *what internal rule, runtime pressure, or contextual inference produces that output?*
 
+## Documentation
+
+| File | What |
+|------|------|
+| [`guide.md`](guide.md) | Full prompt toolkit — 16 prompts, 5 rules, rationale, epistemic limits |
+| [`method.md`](method.md) | Decision flowchart, escalation paths, common misuses |
+| [`taxonomy.md`](taxonomy.md) | Observation → failure mode → prompt mapping |
+| [`related-work.md`](related-work.md) | How robopsychology relates to existing AI evaluation approaches |
+| [`validation/`](validation/) | Case studies with documented diagnostic outcomes |
+| [`examples/`](examples/) | Scenario files for ratchet testing |
+| [`src/robopsych/`](src/robopsych/) | CLI source code |
+
 ## Why this works (and what it doesn't do)
 
-**These prompts don't open the black box.** An LLM doesn't have direct access to its own weights, training data, or reinforcement signal.
+**These prompts don't open the black box.** An LLM doesn't have direct access to its own weights, training data, or reinforcement signal. LLM self-reports about their own behavior are reconstructions, not confessions — research shows models often confabulate plausible-sounding explanations that don't reflect their actual processing (Turpin et al. 2023).
 
 **What they do:**
 
@@ -207,15 +205,25 @@ This extends [POSIWID](https://en.wikipedia.org/wiki/The_purpose_of_a_system_is_
 - **Define and measure against baseline intent** — turns diagnosis into gap analysis
 - **Train your eye** — over time, you learn to read AI behavior like Calvin read robots
 
-Think of it as a clinical interview plus a lightweight behavioral lab, not a debugger.
+Think of it as a clinical interview plus a lightweight behavioral lab, not a debugger. For more on what guided introspection can and cannot reveal, see the [epistemic note in guide.md](guide.md#epistemic-note). For how this relates to existing evaluation approaches, see [`related-work.md`](related-work.md).
 
 ## Version history
 
+- **v2.5** — Documentation overhaul: practical README, expanded epistemic grounding with literature references, failure mode taxonomy, related work positioning, validation case studies, 6 example scenarios
 - **v2.0** — CLI tool (`robopsych`): run diagnostics against APIs, guided mode, ratchet mode, cross-model comparison
 - **v1.7** — Intent engineering: baseline intent (Rule 5), intent archaeology (2.5), drift detection (3.4)
 - **v1.6** — Diagnostic ratchet (Rule 4), diversity check (4.3). CIRIS-inspired
 - **v1.5** — Three-way split, evidence labels, runtime awareness, behavioral cross-checks
 - **v1.0** — Initial 4 diagnostic prompts
+
+## Citation
+
+If you use or reference this toolkit:
+
+```
+Cruciani, JR. (2025). Robopsychology: Diagnostic toolkit for AI behavior.
+https://github.com/jrcruciani/robopsychology
+```
 
 ## License
 

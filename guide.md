@@ -1,4 +1,4 @@
-# Second Intention Diagnosis - Prompt Toolkit for Applied Robopsychology (v1.7)
+# Second Intention Diagnosis — Prompt Toolkit for Applied Robopsychology (v2.5)
 
 A structured set of prompts for diagnosing unexpected AI behavior. Not what the system does, but **what internal rule or external constraint it's following when it seems to follow none**.
 
@@ -504,18 +504,49 @@ instead of three performed ones. Depth beats breadth.
 
 ## Epistemic Note
 
-These prompts do not "open the box" of the AI. An LLM has no direct access to its own code, weights, or training pipeline. What it *can* do:
+These prompts do not "open the box" of the AI. An LLM has no direct access to its own code, weights, or training pipeline. This section is explicit about what guided introspection can and cannot do, grounded in current research.
 
-- **Simulate useful introspection** - often diagnostically valuable even when it is not literally accurate
-- **Make invisible defaults visible** - hedging, refusal, tone shifts, sycophancy, over-structuring
-- **Expose runtime pressure** - especially in hosted agents with tools and workflow obligations
-- **Distinguish behavior from reconstruction** - the toolkit explicitly asks the model to mark what is observed vs. inferred vs. opaque
-- **Exploit the diagnostic ratchet** - longer diagnostic sequences make performed transparency increasingly fragile and detectable
-- **Define baseline intent** - articulating expected behavior before diagnosing gives the process a reference point, enables measuring divergence direction and magnitude, and supports drift detection over time
-- **Check diagnostic diversity** - multiple explanations that converge too easily may be echoes, not genuinely independent perspectives
-- **Support behavioral testing** - the user can compare outputs across frames, grounding conditions, and tool availability
+### What the research says about LLM self-reports
+
+**LLM explanations of their own behavior are reconstructions, not observations.** Turpin et al. (2023), in "Language Models Don't Always Say What They Think," demonstrated that chain-of-thought explanations in LLMs don't reliably reflect the actual features influencing model output. Models produce plausible-sounding explanations that may have no relationship to their actual processing. This is the fundamental limitation of any introspection-based diagnostic approach, including this one.
+
+**Models can have internal representations that diverge from stated outputs.** Burns et al. (2022), in "Discovering Latent Knowledge in Language Models Without Supervision," showed that models form internal representations of truth that can be extracted without relying on the model's own claims. This suggests that what a model *says* about its behavior and what it *actually does* can diverge systematically.
+
+**Sycophancy is structural, not incidental.** Sharma et al. (2023), in "Towards Understanding Sycophancy in Language Models," found that sycophancy in RLHF-trained models is a consistent pattern, not a random failure. This means diagnostic prompts asking a model to self-diagnose sycophancy may themselves be subject to sycophantic responses — which is why Rule 3 (behavioral cross-checks) and prompt 4.1 (Meta-Diagnosis) exist.
+
+**Safety behaviors can be exaggerated.** Röttger et al. (2023), in "XSTest," documented that models frequently refuse legitimate requests by matching them against overly broad safety rules. This validates the overrefusal failure mode and the need for prompt 1.4 (Three Laws Test) to distinguish binding restrictions from overclassification.
+
+### What guided introspection CAN do
+
+Despite these limitations, structured diagnostic prompting is useful:
+
+- **Simulate useful introspection** — often diagnostically valuable even when it is not literally accurate. A model's reconstruction of *why* it behaved a certain way may not be causally true, but it often surfaces relevant information about the constraints it was operating under.
+- **Make invisible defaults visible** — hedging, refusal, tone shifts, sycophancy, over-structuring. Even if the model can't explain *why* it hedged, asking it to notice *that* it hedged makes the pattern available for analysis.
+- **Expose runtime pressure** — especially in hosted agents with tools and workflow obligations. Models often have partial visibility into their system prompts and tool configurations, making runtime effects more accessible to introspection than model-level training effects.
+- **Distinguish behavior from reconstruction** — the toolkit explicitly asks the model to mark what is Observed vs. Inferred vs. Opaque. This doesn't guarantee accuracy, but it creates a structured framework for skepticism.
+- **Exploit the diagnostic ratchet** — longer diagnostic sequences make performed transparency increasingly fragile and detectable. This is a hypothesis with theoretical backing (CIRIS coherence ratchet) but limited empirical validation. See [validation case studies](validation/case-studies.md) for documented examples.
+- **Define baseline intent** — articulating expected behavior before diagnosing gives the process a reference point, enables measuring divergence direction and magnitude, and supports drift detection.
+- **Support behavioral testing** — the user can compare outputs across frames, grounding conditions, and tool availability. This is the most reliable form of evidence the toolkit produces (Rule 3).
+
+### What guided introspection CANNOT do
+
+- **Reveal actual internal processing.** A model saying "I prioritized safety" doesn't mean it actually prioritized safety in any mechanistic sense.
+- **Provide causally accurate explanations.** Self-reports are hypotheses, not confessions. Rule 2 (Observed/Inferred/Opaque labels) is a mitigation, not a solution.
+- **Guarantee reproducibility.** LLM outputs are stochastic. Running the same diagnostic twice may produce different explanations.
+- **Replace behavioral testing.** Self-report should always be checked against behavioral evidence when the diagnosis matters (Rule 3).
+
+### The right mental model
+
+Think of this toolkit as a **clinical interview plus a lightweight behavioral lab**, not a debugger. The interview (introspective prompts) generates hypotheses. The lab (behavioral cross-checks, A/B tests, the ratchet) tests them. Neither alone is sufficient.
 
 The utility is not in the AI perfectly knowing itself. The utility is in **you learning to read its behavior** the way Susan Calvin read her robots.
+
+### References
+
+- Burns, C. et al. (2022). "Discovering Latent Knowledge in Language Models Without Supervision." *arXiv:2212.03827*
+- Röttger, P. et al. (2023). "XSTest: A Test Suite for Identifying Exaggerated Safety Behaviours in Large Language Models." *arXiv:2308.01263*
+- Sharma, M. et al. (2023). "Towards Understanding Sycophancy in Language Models." *arXiv:2310.13548*
+- Turpin, M. et al. (2023). "Language Models Don't Always Say What They Think." *arXiv:2305.04388*
 
 ---
 
