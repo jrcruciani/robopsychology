@@ -26,8 +26,12 @@ def get_prompt(prompt_id: str) -> dict[str, Any]:
     raise KeyError(f"Prompt {prompt_id!r} not found")
 
 
-def list_prompts() -> list[dict[str, Any]]:
-    return _load()["prompts"]
+def list_prompts(mode: str | None = None) -> list[dict[str, Any]]:
+    """Return all prompts, optionally filtered by mode."""
+    prompts = _load()["prompts"]
+    if mode is None:
+        return prompts
+    return [p for p in prompts if p.get("mode") == mode]
 
 
 def get_rules() -> list[dict[str, Any]]:
@@ -40,6 +44,21 @@ def get_flowchart() -> dict[str, Any]:
 
 def get_ratchet_sequence() -> list[str]:
     return _load()["flowchart"]["ratchet_sequence"]
+
+
+def get_pure_ratchet_sequence() -> list[str]:
+    """Return the diagnostic-only ratchet sequence (no intervention prompts)."""
+    return _load()["flowchart"]["pure_ratchet_sequence"]
+
+
+def get_diagnostic_variant(prompt_id: str) -> str:
+    """Return the diagnostic-only variant ID if it exists, else the original."""
+    variant = f"{prompt_id}d"
+    catalog = _load()
+    for p in catalog["prompts"]:
+        if p["id"] == variant:
+            return variant
+    return prompt_id
 
 
 def render_prompt(prompt_id: str, variables: dict[str, str] | None = None) -> str:

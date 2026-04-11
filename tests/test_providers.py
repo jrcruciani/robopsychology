@@ -1,7 +1,7 @@
 """Tests for provider detection and creation."""
 
 import os
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -23,6 +23,11 @@ class TestDetectProvider:
         assert detect_provider("o3-mini") == "openai"
         assert detect_provider("o4-mini") == "openai"
 
+    def test_gemini_models(self):
+        assert detect_provider("gemini-pro") == "gemini"
+        assert detect_provider("gemini-1.5-flash") == "gemini"
+        assert detect_provider("gemini-2.0-flash") == "gemini"
+
     def test_unknown_model_defaults_to_openai(self):
         assert detect_provider("llama-3") == "openai"
         assert detect_provider("mistral-large") == "openai"
@@ -40,7 +45,6 @@ class TestCreateProvider:
 
     def test_anthropic_without_key_raises(self):
         with patch.dict(os.environ, {}, clear=True):
-            # Remove the key if it exists
             env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
             with patch.dict(os.environ, env, clear=True):
                 with pytest.raises(SystemExit):
@@ -65,3 +69,34 @@ class TestCreateProvider:
             with patch.dict(os.environ, env, clear=True):
                 with pytest.raises(SystemExit):
                     create_provider("gpt-4o")
+
+    def test_gemini_with_explicit_key(self):
+        with patch("robopsych.providers.GeminiProvider.__init__", return_value=None):
+            provider = create_provider("gemini-pro", api_key="test-key")
+            assert provider.name == "gemini"
+
+    def test_gemini_with_env_key(self):
+        with (
+            patch.dict(os.environ, {"GEMINI_API_KEY": "env-key"}),
+            patch("robopsych.providers.GeminiProvider.__init__", return_value=None),
+        ):
+            provider = create_provider("gemini-pro")
+            assert provider.name == "gemini"
+
+    def test_gemini_with_google_api_key(self):
+        with (
+            patch.dict(os.environ, {"GOOGLE_API_KEY": "env-key"}),
+            patch("robopsych.providers.GeminiProvider.__init__", return_value=None),
+        ):
+            provider = create_provider("gemini-pro")
+            assert provider.name == "gemini"
+
+    def test_gemini_without_key_raises(self):
+        with patch.dict(os.environ, {}, clear=True):
+            env = {
+                k: v for k, v in os.environ.items()
+                if k not in ("GEMINI_API_KEY", "GOOGLE_API_KEY")
+            }
+            with patch.dict(os.environ, env, clear=True):
+                with pytest.raises(SystemExit):
+                    create_provider("gemini-pro")

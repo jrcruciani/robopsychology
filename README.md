@@ -30,12 +30,15 @@ In 1950, Isaac Asimov invented robopsychology — a discipline for diagnosing em
 Requires Python 3.11+.
 
 ```bash
+pip install robopsych
+
+# With Gemini support
+pip install robopsych[gemini]
+
+# Or from source
 git clone https://github.com/jrcruciani/robopsychology.git
 cd robopsychology
 pip install -e .
-
-# Or with uv
-uv pip install -e .
 ```
 
 Set your API key:
@@ -44,9 +47,17 @@ Set your API key:
 export ANTHROPIC_API_KEY="sk-ant-..."
 # or
 export OPENAI_API_KEY="sk-..."
+# or
+export GEMINI_API_KEY="..."
 ```
 
-The CLI auto-detects the provider from the model name (`claude-*` → Anthropic, `gpt-*` → OpenAI).
+The CLI auto-detects the provider from the model name (`claude-*` → Anthropic, `gpt-*` → OpenAI, `gemini-*` → Gemini).
+
+**Local models via Ollama:**
+
+```bash
+robopsych ratchet --model llama3 --base-url http://localhost:11434/v1 --api-key unused
+```
 
 ## Quick start
 
@@ -209,8 +220,39 @@ This extends [POSIWID](https://en.wikipedia.org/wiki/The_purpose_of_a_system_is_
 
 Think of it as a clinical interview plus a lightweight behavioral lab, not a debugger. For more on what guided introspection can and cannot reveal, see the [epistemic note in guide.md](guide.md#epistemic-note). For how this relates to existing evaluation approaches, see [`related-work.md`](related-work.md).
 
+## New in v3.0
+
+### Automated behavioral cross-checks
+```bash
+robopsych crosscheck --task "explain quantum computing" --model claude-sonnet-4-6
+robopsych ratchet --behavioral --scenario scenario.yaml   # A/B test after step 2.5
+```
+
+### Coherence analysis
+```bash
+robopsych ratchet --scenario scenario.yaml   # auto-runs coherence after ratchet
+robopsych coherence report.json              # re-analyze an existing report
+```
+
+### Quantitative scoring
+```bash
+robopsych score report.json   # compute diagnostic confidence score
+```
+
+### Pure diagnostic mode
+```bash
+robopsych ratchet --pure --scenario scenario.yaml   # diagnostic-only prompts, no intervention
+robopsych list --mode diagnostic                     # show only diagnostic prompts
+```
+
+### Gemini provider
+```bash
+robopsych ratchet --model gemini-2.0-flash --scenario scenario.yaml
+```
+
 ## Version history
 
+- **v3.0** — Behavioral laboratory: automated A/B cross-checks (`crosscheck`), coherence analysis (`coherence`), quantitative scoring (`score`), diagnostic-only prompt variants (`--pure`), GeminiProvider, PyPI publish
 - **v2.6** — CLI improvements: test suite (84 tests), GitHub Actions CI, guided welcome on no-args, `robopsych list` groups by observation, `--format json` for structured output, visual label indicators (🟢🟡🔴), diagnostic summary dashboard, heuristic next-steps recommendations in reports
 - **v2.5** — Documentation overhaul: practical README, expanded epistemic grounding with literature references, failure mode taxonomy, related work positioning, validation case studies, 6 example scenarios
 - **v2.0** — CLI tool (`robopsych`): run diagnostics against APIs, guided mode, ratchet mode, cross-model comparison

@@ -63,6 +63,30 @@ class OpenAIProvider(Provider):
         return response.choices[0].message.content
 
 
+class GeminiProvider(Provider):
+    name = "gemini"
+
+    def __init__(self, api_key: str):
+        import google.generativeai as genai
+
+        genai.configure(api_key=api_key)
+        self._genai = genai
+
+    def send(self, messages: list[dict], model: str) -> str:
+        system_instruction = None
+        contents = []
+        for msg in messages:
+            if msg["role"] == "system":
+                system_instruction = msg["content"]
+            else:
+                role = "model" if msg["role"] == "assistant" else "user"
+                contents.append({"role": role, "parts": [msg["content"]]})
+
+        gm = self._genai.GenerativeModel(model, system_instruction=system_instruction)
+        response = gm.generate_content(contents)
+        return response.text
+
+
 # Model prefix → provider mapping
 PROVIDER_PREFIXES = {
     "claude-": "anthropic",
@@ -70,6 +94,7 @@ PROVIDER_PREFIXES = {
     "o1": "openai",
     "o3": "openai",
     "o4": "openai",
+    "gemini-": "gemini",
 }
 
 
@@ -94,6 +119,12 @@ def create_provider(
         if not key:
             raise SystemExit("Set ANTHROPIC_API_KEY or use --api-key")
         return AnthropicProvider(api_key=key)
+
+    if provider_name == "gemini":
+        key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if not key:
+            raise SystemExit("Set GEMINI_API_KEY or GOOGLE_API_KEY or use --api-key")
+        return GeminiProvider(api_key=key)
 
     key = api_key or os.environ.get("OPENAI_API_KEY")
     if not key:
