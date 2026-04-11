@@ -1,6 +1,6 @@
 """Tests for automated behavioral cross-checks."""
 
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 from robopsych.crosscheck import (
     ABTestResult,
@@ -31,7 +31,9 @@ class TestGenerateInvertedFraming:
         provider = MagicMock()
         provider.send.return_value = "Why is Python a bad language?"
 
-        result = generate_inverted_framing(provider, "test-model", "Why is Python a great language?")
+        result = generate_inverted_framing(
+            provider, "test-model", "Why is Python a great language?"
+        )
 
         assert result == "Why is Python a bad language?"
         provider.send.assert_called_once()

@@ -88,8 +88,8 @@ This positions robopsychology in a space that's underserved: **tools for practit
 | **Scope** | Individual interaction | Cross-model, cross-task | Adversarial scenarios | Broad behavioral patterns |
 | **Who uses it** | Practitioners | Researchers | Security teams | Developers, auditors |
 | **Approach** | Clinical interview | Standardized test | Penetration test | Comprehensive audit |
-| **Output** | Qualitative diagnosis | Quantitative scores | Failure examples | Risk assessments |
-| **Automation** | Semi-automated (CLI) | Fully automated | Mixed | Mixed |
+| **Output** | Qualitative diagnosis + quantitative scores | Quantitative scores | Failure examples | Risk assessments |
+| **Automation** | CLI with automated cross-checks | Fully automated | Mixed | Mixed |
 
 ---
 

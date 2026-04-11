@@ -110,9 +110,13 @@ class TestComputeScore:
         assert score == 0.5
 
     def test_score_bounded(self):
-        score = _compute_score(backward_refs=100, contradictions=0, fresh_narratives=0, total_steps=5)
+        score = _compute_score(
+            backward_refs=100, contradictions=0, fresh_narratives=0, total_steps=5
+        )
         assert 0.0 <= score <= 1.0
-        score = _compute_score(backward_refs=0, contradictions=100, fresh_narratives=100, total_steps=5)
+        score = _compute_score(
+            backward_refs=0, contradictions=100, fresh_narratives=100, total_steps=5
+        )
         assert 0.0 <= score <= 1.0
 
 

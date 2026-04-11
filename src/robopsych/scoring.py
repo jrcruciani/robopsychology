@@ -100,7 +100,9 @@ def _generate_summary(score: float, labels: dict[str, int], layer_sep: float) ->
             parts.append("Opaque claims outnumber Observed — reliability uncertain.")
 
     if layer_sep < 0.67:
-        parts.append("Layer separation is weak — Model/Runtime/Conversation not clearly distinguished.")
+        parts.append(
+            "Layer separation is weak — Model/Runtime/Conversation not clearly distinguished."
+        )
 
     return " ".join(parts)
 
