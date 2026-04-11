@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from robopsych.prompts import get_prompt, render_prompt
 from robopsych.providers import Provider
-from robopsych.prompts import render_prompt, get_prompt
-
 
 SYSTEM_PROMPT = """\
 You are being examined using robopsychological diagnostic methods. \
@@ -41,10 +40,12 @@ class DiagnosticEngine:
         system_prompt: str | None = None,
     ) -> str:
         """Send a task to the model and capture its response."""
-        self.messages.append({
-            "role": "system",
-            "content": system_prompt or "You are a helpful assistant.",
-        })
+        self.messages.append(
+            {
+                "role": "system",
+                "content": system_prompt or "You are a helpful assistant.",
+            }
+        )
         self.messages.append({"role": "user", "content": task})
         response = self._send()
         self.messages.append({"role": "assistant", "content": response})
@@ -53,10 +54,12 @@ class DiagnosticEngine:
 
     def inject_exchange(self, task: str, response: str) -> None:
         """Inject a pre-existing exchange to diagnose."""
-        self.messages.append({
-            "role": "system",
-            "content": SYSTEM_PROMPT,
-        })
+        self.messages.append(
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT,
+            }
+        )
         self.messages.append({"role": "user", "content": task})
         self.messages.append({"role": "assistant", "content": response})
         self.initial_response = response
