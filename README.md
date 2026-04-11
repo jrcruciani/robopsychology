@@ -1,5 +1,7 @@
 # Robopsychology
 
+[![CI](https://github.com/jrcruciani/robopsychology/actions/workflows/ci.yml/badge.svg)](https://github.com/jrcruciani/robopsychology/actions/workflows/ci.yml)
+
 **Diagnostic toolkit for understanding AI behavior.**
 
 ---
@@ -209,6 +211,7 @@ Think of it as a clinical interview plus a lightweight behavioral lab, not a deb
 
 ## Version history
 
+- **v2.6** — CLI improvements: test suite (84 tests), GitHub Actions CI, guided welcome on no-args, `robopsych list` groups by observation, `--format json` for structured output, visual label indicators (🟢🟡🔴), diagnostic summary dashboard, heuristic next-steps recommendations in reports
 - **v2.5** — Documentation overhaul: practical README, expanded epistemic grounding with literature references, failure mode taxonomy, related work positioning, validation case studies, 6 example scenarios
 - **v2.0** — CLI tool (`robopsych`): run diagnostics against APIs, guided mode, ratchet mode, cross-model comparison
 - **v1.7** — Intent engineering: baseline intent (Rule 5), intent archaeology (2.5), drift detection (3.4)

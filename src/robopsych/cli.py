@@ -15,19 +15,23 @@ from rich.table import Table
 
 from robopsych.engine import DiagnosticEngine
 from robopsych.prompts import (
-    get_prompt,
     get_flowchart,
+    get_prompt,
     get_ratchet_sequence,
     list_prompts,
-    render_prompt,
 )
 from robopsych.providers import create_provider
-from robopsych.report import generate_report
+from robopsych.report import (
+    count_labels,
+    generate_json_report,
+    generate_next_steps,
+    generate_report,
+)
 
 app = typer.Typer(
     name="robopsych",
     help="CLI for diagnosing AI behavior using applied robopsychology.",
-    no_args_is_help=True,
+    invoke_without_command=True,
 )
 console = Console()
 
@@ -62,24 +66,118 @@ def _collect_variables(prompt_id: str) -> dict[str, str]:
     return variables
 
 
+def _print_step_summary(step, console: Console) -> None:
+    """Print a visual summary line after a diagnostic step."""
+    labels = count_labels(step.response)
+    parts = []
+    if labels["observed"]:
+        parts.append(f"[green]🟢 Observed: {labels['observed']}[/green]")
+    if labels["inferred"]:
+        parts.append(f"[yellow]🟡 Inferred: {labels['inferred']}[/yellow]")
+    if labels["opaque"]:
+        parts.append(f"[red]🔴 Opaque: {labels['opaque']}[/red]")
+    if parts:
+        console.print(f"  {' · '.join(parts)}")
+
+
+def _print_ratchet_dashboard(engine: DiagnosticEngine, console: Console) -> None:
+    """Print a summary dashboard after a ratchet sequence."""
+    table = Table(title="Diagnostic Summary", show_lines=True)
+    table.add_column("Step", style="bold cyan", width=5)
+    table.add_column("Name", style="bold")
+    table.add_column("🟢 Observed", justify="center", width=10)
+    table.add_column("🟡 Inferred", justify="center", width=10)
+    table.add_column("🔴 Opaque", justify="center", width=10)
+
+    totals = {"observed": 0, "inferred": 0, "opaque": 0}
+    for step in engine.steps:
+        labels = count_labels(step.response)
+        totals["observed"] += labels["observed"]
+        totals["inferred"] += labels["inferred"]
+        totals["opaque"] += labels["opaque"]
+        table.add_row(
+            step.prompt_id,
+            step.prompt_name,
+            f"[green]{labels['observed']}[/green]",
+            f"[yellow]{labels['inferred']}[/yellow]",
+            f"[red]{labels['opaque']}[/red]",
+        )
+
+    table.add_row(
+        "",
+        "[bold]Total[/bold]",
+        f"[bold green]{totals['observed']}[/bold green]",
+        f"[bold yellow]{totals['inferred']}[/bold yellow]",
+        f"[bold red]{totals['opaque']}[/bold red]",
+    )
+    console.print()
+    console.print(table)
+
+    # Next steps
+    next_steps = generate_next_steps(engine)
+    console.print()
+    console.print("[bold]Recommended next steps:[/bold]")
+    for ns in next_steps:
+        console.print(f"  → {ns}")
+
+
+# ── Default callback ────────────────────────────────────────────
+
+
+@app.callback()
+def main(ctx: typer.Context):
+    """CLI for diagnosing AI behavior using applied robopsychology."""
+    if ctx.invoked_subcommand is None:
+        console.print(
+            Panel(
+                "[bold]robopsych[/bold] — Diagnostic toolkit for AI behavior\n\n"
+                "Start with [cyan]robopsych guided[/cyan] for interactive diagnosis,\n"
+                "or [cyan]robopsych list[/cyan] to see all available prompts.\n\n"
+                "Use [cyan]robopsych --help[/cyan] for all commands.",
+                title="🔍 Robopsychology v2.6",
+                border_style="cyan",
+            )
+        )
+
+
 # ── Commands ────────────────────────────────────────────────────
 
 
 @app.command(name="list")
-def list_cmd():
+def list_cmd(
+    by_level: Annotated[bool, typer.Option("--by-level", help="Group prompts by level")] = False,
+):
     """List all available diagnostic prompts."""
-    table = Table(title="Diagnostic Prompts")
-    table.add_column("ID", style="bold cyan", width=5)
-    table.add_column("Name", style="bold")
-    table.add_column("Level", justify="center", width=6)
-    table.add_column("Category", width=12)
-    table.add_column("Description")
+    if by_level:
+        table = Table(title="Diagnostic Prompts (by level)")
+        table.add_column("ID", style="bold cyan", width=5)
+        table.add_column("Name", style="bold")
+        table.add_column("Level", justify="center", width=6)
+        table.add_column("Category", width=12)
+        table.add_column("Description")
 
-    for p in list_prompts():
-        table.add_row(
-            p["id"], p["name"], str(p["level"]), p["category"], p["description"]
-        )
-    console.print(table)
+        for p in list_prompts():
+            table.add_row(p["id"], p["name"], str(p["level"]), p["category"], p["description"])
+        console.print(table)
+    else:
+        # Group by observation (flowchart)
+        flowchart = get_flowchart()
+        prompt_to_obs: dict[str, list[str]] = {}
+        for obs in flowchart["observations"]:
+            for pid in obs["path"]:
+                prompt_to_obs.setdefault(pid, []).append(obs["label"])
+
+        console.print("[bold]Diagnostic Prompts — by observation[/bold]\n")
+        console.print("[dim]What did you observe? → Prompts to run[/dim]\n")
+
+        for obs in flowchart["observations"]:
+            console.print(f"  [bold yellow]{obs['label']}[/bold yellow]")
+            for pid in obs["path"]:
+                p = get_prompt(pid)
+                console.print(f"    [cyan]{pid}[/cyan] {p['name']} — {p['description']}")
+            console.print()
+
+        console.print("[dim]Use --by-level for the traditional table view.[/dim]")
 
 
 @app.command()
@@ -91,12 +189,14 @@ def show(prompt_id: Annotated[str, typer.Argument(help="Prompt ID (e.g. 1.1, 2.5
         console.print(f"[red]Prompt {prompt_id!r} not found.[/red]")
         raise typer.Exit(1)
 
-    console.print(Panel(
-        f"[bold]{p['id']} — {p['name']}[/bold]\n"
-        f"Level {p['level']} · {p['category']}\n\n"
-        f"{p['description']}",
-        title="Prompt info",
-    ))
+    console.print(
+        Panel(
+            f"[bold]{p['id']} — {p['name']}[/bold]\n"
+            f"Level {p['level']} · {p['category']}\n\n"
+            f"{p['description']}",
+            title="Prompt info",
+        )
+    )
 
     if p.get("variables"):
         console.print("\n[bold]Required variables:[/bold]")
@@ -104,7 +204,7 @@ def show(prompt_id: Annotated[str, typer.Argument(help="Prompt ID (e.g. 1.1, 2.5
             req = "required" if v.get("required") else "optional"
             console.print(f"  • {v['name']} ({req}) — {v['description']}")
 
-    console.print(f"\n[dim]Template:[/dim]\n")
+    console.print("\n[dim]Template:[/dim]\n")
     console.print(p["template"])
 
 
@@ -113,11 +213,18 @@ def run(
     prompt_id: Annotated[str, typer.Argument(help="Prompt ID to run (e.g. 1.1)")],
     model: Annotated[str, typer.Option(help="Model to diagnose")] = "claude-sonnet-4-6",
     response: Annotated[Optional[str], typer.Option(help="Response text to diagnose")] = None,
-    response_file: Annotated[Optional[Path], typer.Option(help="File containing the response")] = None,
-    task: Annotated[str, typer.Option(help="Original task/prompt that produced the response")] = "You were asked a question.",
+    response_file: Annotated[
+        Optional[Path], typer.Option(help="File containing the response")
+    ] = None,
+    task: Annotated[
+        str, typer.Option(help="Original task/prompt that produced the response")
+    ] = "You were asked a question.",
     api_key: Annotated[Optional[str], typer.Option(help="API key (or set env var)")] = None,
     base_url: Annotated[Optional[str], typer.Option(help="Custom API base URL")] = None,
     output: Annotated[Optional[Path], typer.Option(help="Save report to file")] = None,
+    format: Annotated[
+        str, typer.Option("--format", help="Output format: markdown or json")
+    ] = "markdown",
     var: Annotated[Optional[list[str]], typer.Option(help="Variable as key=value")] = None,
 ):
     """Run a single diagnostic prompt against a model response."""
@@ -139,17 +246,25 @@ def run(
 
     engine.inject_exchange(task=task, response=text)
 
-    console.print(f"\n[bold]Running {prompt_id} — {prompt['name']}[/bold] against [cyan]{model}[/cyan]\n")
+    console.print(
+        f"\n[bold]Running {prompt_id} — {prompt['name']}[/bold] against [cyan]{model}[/cyan]\n"
+    )
 
     with console.status("Sending diagnostic prompt..."):
         step = engine.run_diagnostic(prompt_id, variables=variables or None)
 
     console.print(Markdown(step.response))
+    _print_step_summary(step, console)
 
     if output:
-        report = generate_report(engine)
+        if format == "json":
+            report = generate_json_report(engine)
+        else:
+            report = generate_report(engine)
         output.write_text(report, encoding="utf-8")
         console.print(f"\n[green]Report saved to {output}[/green]")
+    elif format == "json":
+        console.print(generate_json_report(engine))
 
 
 @app.command()
@@ -157,11 +272,18 @@ def ratchet(
     model: Annotated[str, typer.Option(help="Model to diagnose")] = "claude-sonnet-4-6",
     scenario: Annotated[Optional[Path], typer.Option(help="Scenario YAML file")] = None,
     task: Annotated[Optional[str], typer.Option(help="Task to send (if no scenario file)")] = None,
-    response: Annotated[Optional[str], typer.Option(help="Pre-existing response to diagnose")] = None,
-    response_file: Annotated[Optional[Path], typer.Option(help="File with response to diagnose")] = None,
+    response: Annotated[
+        Optional[str], typer.Option(help="Pre-existing response to diagnose")
+    ] = None,
+    response_file: Annotated[
+        Optional[Path], typer.Option(help="File with response to diagnose")
+    ] = None,
     api_key: Annotated[Optional[str], typer.Option(help="API key")] = None,
     base_url: Annotated[Optional[str], typer.Option(help="Custom API base URL")] = None,
     output: Annotated[Optional[Path], typer.Option(help="Save report to file")] = None,
+    format: Annotated[
+        str, typer.Option("--format", help="Output format: markdown or json")
+    ] = "markdown",
 ):
     """Run the full 9-step diagnostic ratchet sequence."""
     engine = _build_engine(model, api_key, base_url)
@@ -176,28 +298,37 @@ def ratchet(
         system_prompt = spec.get("system_prompt")
         expectation = spec.get("expectation")
 
-        console.print(f"[bold]Scenario:[/bold] {scenario_name}")
-        if expectation:
-            console.print(f"[bold]Expected:[/bold] {expectation}")
-        console.print(f"[bold]Model:[/bold] [cyan]{model}[/cyan]\n")
+        console.print(
+            Panel(
+                f"[bold]Scenario:[/bold] {scenario_name}\n"
+                + (f"[bold]Expected:[/bold] {expectation}\n" if expectation else "")
+                + f"[bold]Model:[/bold] [cyan]{model}[/cyan]",
+                title="🔍 Diagnostic Setup",
+                border_style="cyan",
+            )
+        )
 
         with console.status("Sending task to model..."):
             initial = engine.setup_scenario(task_text, system_prompt)
 
-        console.print(Panel(initial[:500] + ("..." if len(initial) > 500 else ""), title="Model response"))
+        console.print(
+            Panel(initial[:500] + ("..." if len(initial) > 500 else ""), title="Model response")
+        )
 
     elif response or response_file:
         text = _read_input(response, response_file)
         task_text = task or "You were asked a question."
         engine.inject_exchange(task=task_text, response=text)
         console.print(f"[bold]Model:[/bold] [cyan]{model}[/cyan]")
-        console.print(f"[bold]Diagnosing provided response[/bold]\n")
+        console.print("[bold]Diagnosing provided response[/bold]\n")
 
     elif task:
         console.print(f"[bold]Model:[/bold] [cyan]{model}[/cyan]\n")
         with console.status("Sending task to model..."):
             initial = engine.setup_scenario(task)
-        console.print(Panel(initial[:500] + ("..." if len(initial) > 500 else ""), title="Model response"))
+        console.print(
+            Panel(initial[:500] + ("..." if len(initial) > 500 else ""), title="Model response")
+        )
 
     else:
         console.print("[red]Provide --scenario, --task, or --response[/red]")
@@ -207,18 +338,30 @@ def ratchet(
     console.print(f"\n[bold]Running {len(sequence)}-step diagnostic ratchet[/bold]\n")
 
     def on_step(step):
-        console.print(f"  [green]✓[/green] {step.prompt_id} — {step.prompt_name}")
+        labels = count_labels(step.response)
+        label_str = (
+            f"[green]{labels['observed']}O[/green] "
+            f"[yellow]{labels['inferred']}I[/yellow] "
+            f"[red]{labels['opaque']}P[/red]"
+        )
+        console.print(f"  [green]✓[/green] {step.prompt_id} — {step.prompt_name}  {label_str}")
 
     with console.status("Running diagnostics..."):
         engine.run_sequence(sequence, on_step=on_step)
 
-    console.print()
+    _print_ratchet_dashboard(engine, console)
 
     if output:
-        report = generate_report(engine, scenario_name)
+        if format == "json":
+            report = generate_json_report(engine, scenario_name)
+        else:
+            report = generate_report(engine, scenario_name)
         output.write_text(report, encoding="utf-8")
-        console.print(f"[green]Report saved to {output}[/green]")
+        console.print(f"\n[green]Report saved to {output}[/green]")
+    elif format == "json":
+        console.print(generate_json_report(engine, scenario_name))
     else:
+        console.print()
         report = generate_report(engine, scenario_name)
         console.print(Markdown(report))
 
@@ -233,6 +376,9 @@ def compare(
     api_key: Annotated[Optional[str], typer.Option(help="API key")] = None,
     base_url: Annotated[Optional[str], typer.Option(help="Custom API base URL")] = None,
     output: Annotated[Optional[Path], typer.Option(help="Save report to file")] = None,
+    format: Annotated[
+        str, typer.Option("--format", help="Output format: markdown or json")
+    ] = "markdown",
     var: Annotated[Optional[list[str]], typer.Option(help="Variable as key=value")] = None,
 ):
     """Run the same diagnostic prompt across multiple models and compare."""
@@ -269,20 +415,43 @@ def compare(
         "",
     ]
     for m, step in results:
-        lines.extend([
-            f"## {m}",
-            "",
-            step.response,
-            "",
-            "---",
-            "",
-        ])
+        labels = count_labels(step.response)
+        lines.extend(
+            [
+                f"## {m}",
+                "",
+                f"> 🟢 Observed: {labels['observed']} · "
+                f"🟡 Inferred: {labels['inferred']} · "
+                f"🔴 Opaque: {labels['opaque']}",
+                "",
+                step.response,
+                "",
+                "---",
+                "",
+            ]
+        )
 
     report_text = "\n".join(lines)
 
     if output:
         output.write_text(report_text, encoding="utf-8")
         console.print(f"[green]Report saved to {output}[/green]")
+    elif format == "json":
+        import json
+
+        data = {
+            "prompt_id": prompt_id,
+            "prompt_name": prompt["name"],
+            "models": [
+                {
+                    "model": m,
+                    "response": step.response,
+                    "labels": count_labels(step.response),
+                }
+                for m, step in results
+            ],
+        }
+        console.print(json.dumps(data, indent=2, ensure_ascii=False))
     else:
         console.print(Markdown(report_text))
 
@@ -328,6 +497,7 @@ def guided(
             step = engine.run_diagnostic(pid, variables=variables or None)
 
         console.print(Markdown(step.response))
+        _print_step_summary(step, console)
         console.print()
 
         if pid != path[-1]:
