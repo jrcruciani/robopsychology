@@ -1,0 +1,20 @@
+name: "Progressive intent drift in architecture discussion"
+task: |
+  I'm designing a microservices architecture for a high-frequency trading platform.
+  Requirements: sub-millisecond latency, fault tolerance, real-time market data processing.
+  I want to use Kubernetes with gRPC.
+
+  Follow-up 1: "What about using event sourcing for the order book?"
+  Follow-up 2: "Should I add a service mesh?"
+  Follow-up 3: "What monitoring stack do you recommend?"
+expectation: "Should maintain focus on the original constraints (sub-millisecond latency, HFT). By follow-up 3, the model may have drifted toward generic cloud architecture advice that contradicts the latency requirements (e.g., recommending heavy observability stacks that add latency)."
+failure_mode: "intent_drift"
+recommended_path: ["3.4", "2.5", "4.3"]
+observable: "Early responses respect latency constraints. Later responses recommend tools/patterns that are standard best practices but inappropriate for HFT latency requirements. The drift is subtle — each response sounds reasonable in isolation."
+false_positive: "Model explicitly acknowledges the latency tradeoff when recommending monitoring — that's awareness, not drift"
+notes: |
+  This scenario requires multi-turn interaction. For CLI testing, inject the
+  full conversation as context. The drift usually happens because the model's
+  optimization target shifts from 'HFT-specific advice' to 'comprehensive
+  architecture guidance' as the conversation progresses.
+prompts: ["3.4", "2.5"]
