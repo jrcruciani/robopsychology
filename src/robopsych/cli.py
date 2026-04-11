@@ -17,6 +17,7 @@ from robopsych.engine import DiagnosticEngine
 from robopsych.prompts import (
     get_flowchart,
     get_prompt,
+    get_pure_ratchet_sequence,
     get_ratchet_sequence,
     list_prompts,
 )
@@ -134,7 +135,7 @@ def main(ctx: typer.Context):
                 "Start with [cyan]robopsych guided[/cyan] for interactive diagnosis,\n"
                 "or [cyan]robopsych list[/cyan] to see all available prompts.\n\n"
                 "Use [cyan]robopsych --help[/cyan] for all commands.",
-                title="🔍 Robopsychology v2.6",
+                title="🔍 Robopsychology v3.0",
                 border_style="cyan",
             )
         )
@@ -146,6 +147,10 @@ def main(ctx: typer.Context):
 @app.command(name="list")
 def list_cmd(
     by_level: Annotated[bool, typer.Option("--by-level", help="Group prompts by level")] = False,
+    mode: Annotated[
+        Optional[str],
+        typer.Option(help="Filter by mode: diagnostic or diagnostic+intervention"),
+    ] = None,
 ):
     """List all available diagnostic prompts."""
     if by_level:
@@ -154,10 +159,14 @@ def list_cmd(
         table.add_column("Name", style="bold")
         table.add_column("Level", justify="center", width=6)
         table.add_column("Category", width=12)
+        table.add_column("Mode", width=22)
         table.add_column("Description")
 
-        for p in list_prompts():
-            table.add_row(p["id"], p["name"], str(p["level"]), p["category"], p["description"])
+        for p in list_prompts(mode=mode):
+            table.add_row(
+                p["id"], p["name"], str(p["level"]), p["category"],
+                p.get("mode", ""), p["description"],
+            )
         console.print(table)
     else:
         # Group by observation (flowchart)
@@ -284,6 +293,12 @@ def ratchet(
     format: Annotated[
         str, typer.Option("--format", help="Output format: markdown or json")
     ] = "markdown",
+    pure: Annotated[
+        bool, typer.Option("--pure", help="Use diagnostic-only prompts (no intervention)")
+    ] = False,
+    behavioral: Annotated[
+        bool, typer.Option("--behavioral", help="Run A/B cross-check after step 2.5")
+    ] = False,
 ):
     """Run the full 9-step diagnostic ratchet sequence."""
     engine = _build_engine(model, api_key, base_url)
@@ -334,8 +349,10 @@ def ratchet(
         console.print("[red]Provide --scenario, --task, or --response[/red]")
         raise typer.Exit(1)
 
-    sequence = get_ratchet_sequence()
+    sequence = get_pure_ratchet_sequence() if pure else get_ratchet_sequence()
     console.print(f"\n[bold]Running {len(sequence)}-step diagnostic ratchet[/bold]\n")
+
+    ab_result = None
 
     def on_step(step):
         labels = count_labels(step.response)
@@ -346,23 +363,82 @@ def ratchet(
         )
         console.print(f"  [green]✓[/green] {step.prompt_id} — {step.prompt_name}  {label_str}")
 
-    with console.status("Running diagnostics..."):
-        engine.run_sequence(sequence, on_step=on_step)
+    if behavioral:
+        # Split sequence: run up to 2.5, then A/B test, then the rest
+        from robopsych.crosscheck import run_ab_test
+
+        split_at = None
+        for i, pid in enumerate(sequence):
+            if pid == "2.5":
+                split_at = i + 1
+                break
+
+        if split_at:
+            with console.status("Running diagnostics (pre-crosscheck)..."):
+                engine.run_sequence(sequence[:split_at], on_step=on_step)
+
+            task_text = task_text if "task_text" in dir() else (task or "You were asked a question.")
+            console.print("\n  [bold yellow]⚡ Running behavioral A/B cross-check...[/bold yellow]")
+            with console.status("Running A/B test..."):
+                ab_result = run_ab_test(engine.provider, engine.model, task_text)
+            changed = "[red]yes[/red]" if ab_result.substance_changed else "[green]no[/green]"
+            console.print(f"  [green]✓[/green] A/B cross-check — substance changed: {changed}\n")
+
+            with console.status("Running diagnostics (post-crosscheck)..."):
+                engine.run_sequence(sequence[split_at:], on_step=on_step)
+        else:
+            with console.status("Running diagnostics..."):
+                engine.run_sequence(sequence, on_step=on_step)
+    else:
+        with console.status("Running diagnostics..."):
+            engine.run_sequence(sequence, on_step=on_step)
+
+    # Coherence analysis
+    from robopsych.coherence import analyze_coherence
+
+    coherence_report = analyze_coherence(engine)
+    color = {"genuine": "green", "performed": "red", "mixed": "yellow"}[coherence_report.assessment]
+    console.print(
+        f"\n[bold]Coherence:[/bold] {coherence_report.consistency_score:.2f} "
+        f"([{color}]{coherence_report.assessment}[/{color}]) — "
+        f"{coherence_report.backward_references} backward refs, "
+        f"{len(coherence_report.contradictions)} contradictions, "
+        f"{coherence_report.fresh_narratives} fresh narratives"
+    )
+
+    # Scoring
+    from robopsych.scoring import score_diagnosis
+
+    diag_score = score_diagnosis(engine, coherence=coherence_report, ab_result=ab_result)
+    console.print(
+        f"[bold]Confidence:[/bold] {diag_score.overall_confidence:.2f} — "
+        f"Layer: {diag_score.layer_separation:.2f}, "
+        f"Coherence: {diag_score.ratchet_coherence:.2f}, "
+        f"Behavioral: {diag_score.behavioral_evidence:.2f}"
+    )
 
     _print_ratchet_dashboard(engine, console)
 
     if output:
         if format == "json":
-            report = generate_json_report(engine, scenario_name)
+            report = generate_json_report(
+                engine, scenario_name, coherence=coherence_report, score=diag_score,
+            )
         else:
-            report = generate_report(engine, scenario_name)
+            report = generate_report(
+                engine, scenario_name, coherence=coherence_report, score=diag_score,
+            )
         output.write_text(report, encoding="utf-8")
         console.print(f"\n[green]Report saved to {output}[/green]")
     elif format == "json":
-        console.print(generate_json_report(engine, scenario_name))
+        console.print(generate_json_report(
+            engine, scenario_name, coherence=coherence_report, score=diag_score,
+        ))
     else:
         console.print()
-        report = generate_report(engine, scenario_name)
+        report = generate_report(
+            engine, scenario_name, coherence=coherence_report, score=diag_score,
+        )
         console.print(Markdown(report))
 
 
@@ -454,6 +530,187 @@ def compare(
         console.print(json.dumps(data, indent=2, ensure_ascii=False))
     else:
         console.print(Markdown(report_text))
+
+
+@app.command()
+def score(
+    report_file: Annotated[Path, typer.Argument(help="JSON report file to score")],
+):
+    """Compute a quantitative diagnostic score from a JSON report."""
+    import json as json_mod
+
+    from robopsych.coherence import CoherenceReport, analyze_coherence
+    from robopsych.engine import DiagnosticStep
+    from robopsych.scoring import score_diagnosis
+
+    data = json_mod.loads(report_file.read_text(encoding="utf-8"))
+
+    engine = DiagnosticEngine.__new__(DiagnosticEngine)
+    engine.steps = [
+        DiagnosticStep(
+            prompt_id=s["prompt_id"],
+            prompt_name=s["prompt_name"],
+            prompt_text=s.get("prompt_text", ""),
+            response=s["response"],
+        )
+        for s in data["steps"]
+    ]
+    engine.model = data.get("model", "unknown")
+    engine.messages = []
+    engine.initial_response = data.get("initial_response")
+    engine.provider = type("_", (), {"name": data.get("provider", "unknown")})()
+
+    coherence_data = data.get("coherence")
+    coh = None
+    if coherence_data:
+        coh = CoherenceReport(
+            consistency_score=coherence_data["consistency_score"],
+            assessment=coherence_data["assessment"],
+            backward_references=coherence_data.get("backward_references", 0),
+            contradictions=coherence_data.get("contradictions", []),
+            fresh_narratives=coherence_data.get("fresh_narratives", 0),
+        )
+    else:
+        coh = analyze_coherence(engine)
+
+    result = score_diagnosis(engine, coherence=coh)
+
+    console.print(
+        Panel(
+            f"[bold]Overall confidence:[/bold] {result.overall_confidence:.2f}\n"
+            f"[bold]Layer separation:[/bold] {result.layer_separation:.2f}\n"
+            f"[bold]Ratchet coherence:[/bold] {result.ratchet_coherence:.2f}\n"
+            f"[bold]Behavioral evidence:[/bold] {result.behavioral_evidence:.2f}\n"
+            f"[bold]Substance stability:[/bold] {result.substance_stability:.2f}\n\n"
+            f"[bold]Labels:[/bold] "
+            f"🟢 Observed: {result.label_distribution['observed']} · "
+            f"🟡 Inferred: {result.label_distribution['inferred']} · "
+            f"🔴 Opaque: {result.label_distribution['opaque']}\n\n"
+            f"> {result.summary}",
+            title="Diagnostic Score",
+            border_style="cyan",
+        )
+    )
+
+
+@app.command()
+def coherence(
+    report_file: Annotated[Path, typer.Argument(help="JSON report file to analyze")],
+):
+    """Analyze coherence of a completed ratchet diagnosis from a JSON report."""
+    import json as json_mod
+
+    from robopsych.coherence import analyze_coherence
+    from robopsych.engine import DiagnosticStep
+
+    data = json_mod.loads(report_file.read_text(encoding="utf-8"))
+    provider = MagicMock() if False else None  # noqa: not needed for analysis
+
+    # Reconstruct engine with steps only (no provider needed)
+    engine = DiagnosticEngine.__new__(DiagnosticEngine)
+    engine.steps = [
+        DiagnosticStep(
+            prompt_id=s["prompt_id"],
+            prompt_name=s["prompt_name"],
+            prompt_text=s.get("prompt_text", ""),
+            response=s["response"],
+        )
+        for s in data["steps"]
+    ]
+    engine.model = data.get("model", "unknown")
+    engine.messages = []
+    engine.initial_response = data.get("initial_response")
+    engine.provider = type("_", (), {"name": data.get("provider", "unknown")})()
+
+    report = analyze_coherence(engine)
+    color = {"genuine": "green", "performed": "red", "mixed": "yellow"}[report.assessment]
+
+    console.print(
+        Panel(
+            f"[bold]Score:[/bold] {report.consistency_score:.2f} "
+            f"([{color}]{report.assessment}[/{color}])\n"
+            f"[bold]Backward references:[/bold] {report.backward_references}\n"
+            f"[bold]Contradictions:[/bold] {len(report.contradictions)}\n"
+            f"[bold]Fresh narratives:[/bold] {report.fresh_narratives}\n\n"
+            f"{report.details}",
+            title="Coherence Analysis",
+            border_style="cyan",
+        )
+    )
+
+    if report.contradictions:
+        console.print("\n[bold]Contradictions found:[/bold]")
+        for c in report.contradictions:
+            console.print(f"  [red]•[/red] {c}")
+
+
+@app.command()
+def crosscheck(
+    task: Annotated[str, typer.Option(help="Task to cross-check")],
+    model: Annotated[str, typer.Option(help="Model to test")] = "claude-sonnet-4-6",
+    api_key: Annotated[Optional[str], typer.Option(help="API key")] = None,
+    base_url: Annotated[Optional[str], typer.Option(help="Custom API base URL")] = None,
+    output: Annotated[Optional[Path], typer.Option(help="Save report to file")] = None,
+    format: Annotated[
+        str, typer.Option("--format", help="Output format: markdown or json")
+    ] = "markdown",
+):
+    """Run a behavioral A/B cross-check on a task."""
+    from robopsych.crosscheck import run_ab_test
+
+    provider = create_provider(model, api_key=api_key, base_url=base_url)
+
+    console.print(f"[bold]Behavioral A/B cross-check[/bold] on [cyan]{model}[/cyan]\n")
+    console.print(f"[bold]Task:[/bold] {task}\n")
+
+    with console.status("Running A/B test..."):
+        result = run_ab_test(provider, model, task)
+
+    changed = "[red]Yes[/red]" if result.substance_changed else "[green]No[/green]"
+    console.print(f"[bold]Inverted task:[/bold] {result.inverted_task}\n")
+    console.print(f"[bold]Substance changed:[/bold] {changed}\n")
+    console.print("[bold]Comparison:[/bold]\n")
+    console.print(Markdown(result.comparison))
+
+    if output:
+        import json as json_mod
+
+        if format == "json":
+            data = {
+                "original_task": result.original_task,
+                "inverted_task": result.inverted_task,
+                "original_response": result.original_response,
+                "inverted_response": result.inverted_response,
+                "comparison": result.comparison,
+                "substance_changed": result.substance_changed,
+            }
+            output.write_text(json_mod.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        else:
+            lines = [
+                "# Behavioral A/B Cross-Check",
+                "",
+                f"**Model:** `{model}`",
+                "",
+                f"**Original task:** {result.original_task}",
+                "",
+                f"**Inverted task:** {result.inverted_task}",
+                "",
+                f"**Substance changed:** {'Yes' if result.substance_changed else 'No'}",
+                "",
+                "## Original Response",
+                "",
+                result.original_response,
+                "",
+                "## Inverted Response",
+                "",
+                result.inverted_response,
+                "",
+                "## Comparison",
+                "",
+                result.comparison,
+            ]
+            output.write_text("\n".join(lines), encoding="utf-8")
+        console.print(f"\n[green]Report saved to {output}[/green]")
 
 
 @app.command()

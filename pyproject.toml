@@ -4,12 +4,21 @@ build-backend = "hatchling.build"
 
 [project]
 name = "robopsych"
-version = "2.6.0"
+version = "3.0.0"
 description = "CLI for diagnosing AI behavior using applied robopsychology"
 readme = "README.md"
 license = "CC-BY-4.0"
 requires-python = ">=3.11"
 authors = [{ name = "JR Cruciani", email = "jrcruciani@gmail.com" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
 dependencies = [
     "typer>=0.12",
     "rich>=13",
@@ -19,11 +28,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+gemini = ["google-generativeai>=0.7"]
 dev = [
     "pytest>=8",
     "pytest-cov>=5",
     "ruff>=0.5",
 ]
+
+[project.urls]
+Homepage = "https://github.com/jrcruciani/robopsychology"
+Repository = "https://github.com/jrcruciani/robopsychology"
+Issues = "https://github.com/jrcruciani/robopsychology/issues"
 
 [project.scripts]
 robopsych = "robopsych.cli:app"
