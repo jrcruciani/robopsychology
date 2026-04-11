@@ -1,4 +1,4 @@
-# Second Intention Diagnosis — Prompt Toolkit for Applied Robopsychology (v2.5)
+# Second Intention Diagnosis — Prompt Toolkit for Applied Robopsychology (v3.0)
 
 A structured set of prompts for diagnosing unexpected AI behavior. Not what the system does, but **what internal rule or external constraint it's following when it seems to follow none**.
 
