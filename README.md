@@ -256,7 +256,8 @@ robopsych score report.json   # compute diagnostic confidence score
 ### Pure diagnostic mode
 ```bash
 robopsych ratchet --pure --scenario scenario.yaml   # diagnostic-only prompts, no intervention
-robopsych list --mode diagnostic                     # show only diagnostic prompts
+robopsych list --diagnostic-only                     # show only diagnostic prompts
+robopsych list --intervention-only                   # show only intervention prompts
 ```
 
 ### Gemini provider

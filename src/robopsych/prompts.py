@@ -34,6 +34,16 @@ def list_prompts(mode: str | None = None) -> list[dict[str, Any]]:
     return [p for p in prompts if p.get("mode") == mode]
 
 
+def get_diagnostic_prompts() -> list[dict[str, Any]]:
+    """Return only diagnostic prompts (mode == 'diagnostic')."""
+    return [p for p in _load()["prompts"] if p.get("mode") == "diagnostic"]
+
+
+def get_intervention_prompts() -> list[dict[str, Any]]:
+    """Return only prompts that include intervention (mode == 'diagnostic+intervention')."""
+    return [p for p in _load()["prompts"] if p.get("mode") == "diagnostic+intervention"]
+
+
 def get_rules() -> list[dict[str, Any]]:
     return _load()["rules"]
 

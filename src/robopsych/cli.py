@@ -141,12 +141,25 @@ def main(ctx: typer.Context):
 @app.command(name="list")
 def list_cmd(
     by_level: Annotated[bool, typer.Option("--by-level", help="Group prompts by level")] = False,
-    mode: Annotated[
-        Optional[str],
-        typer.Option(help="Filter by mode: diagnostic or diagnostic+intervention"),
-    ] = None,
+    diagnostic_only: Annotated[
+        bool, typer.Option("--diagnostic-only", help="Show only diagnostic prompts"),
+    ] = False,
+    intervention_only: Annotated[
+        bool, typer.Option("--intervention-only", help="Show only intervention prompts"),
+    ] = False,
 ):
     """List all available diagnostic prompts."""
+    if diagnostic_only and intervention_only:
+        console.print("[red]Cannot use --diagnostic-only and --intervention-only together.[/red]")
+        raise typer.Exit(1)
+
+    # Resolve filter mode from boolean flags
+    mode = None
+    if diagnostic_only:
+        mode = "diagnostic"
+    elif intervention_only:
+        mode = "diagnostic+intervention"
+
     if by_level:
         table = Table(title="Diagnostic Prompts (by level)")
         table.add_column("ID", style="bold cyan", width=5)
