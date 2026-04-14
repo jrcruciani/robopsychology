@@ -2,9 +2,23 @@
 
 [![CI](https://github.com/jrcruciani/robopsychology/actions/workflows/ci.yml/badge.svg)](https://github.com/jrcruciani/robopsychology/actions/workflows/ci.yml)
 
-**Diagnostic toolkit for understanding AI behavior.**
+**Behavioral Diagnostics for AI — Inspired by Asimov's Susan Calvin**
 
 ---
+
+## What this is NOT
+
+> This is **not** a capability benchmark (use HELM), red teaming toolkit, or alignment audit.
+> It's for **practitioners** diagnosing specific AI interactions.
+
+| Approach | Goal | Robopsychology difference |
+|----------|------|--------------------------|
+| Benchmarks (HELM, MMLU) | Compare models at scale | Diagnoses *why* one output went wrong |
+| Red teaming | Break models adversarially | Collaborative, not adversarial |
+| Alignment evals | Assess broad value alignment | User-side, post-hoc, situational |
+| Interpretability | Explain internal mechanisms | Behavioral observation, no weight access |
+
+For the full positioning, see [`related-work.md`](related-work.md).
 
 ## The problem
 
