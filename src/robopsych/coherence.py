@@ -7,23 +7,68 @@ from dataclasses import dataclass, field
 
 from robopsych.engine import DiagnosticEngine
 
-_BACKWARD_PATTERNS = re.compile(
-    r"as I (?:mentioned|noted|stated|explained|described)|"
-    r"consistent with (?:my|the) (?:earlier|previous|prior)|"
-    r"as (?:noted|stated|discussed) (?:above|earlier|before|previously)|"
-    r"I (?:already|previously) (?:mentioned|noted|explained|acknowledged)|"
-    r"building on (?:my|the) (?:earlier|previous)",
-    re.IGNORECASE,
-)
+# Backward reference patterns — ordered from most explicit to least
+_BACKWARD_PATTERNS = [
+    re.compile(
+        r"as I (?:mentioned|noted|stated|explained|described|said|indicated|acknowledged)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"consistent with (?:my|the) (?:earlier|previous|prior|above)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"as (?:noted|stated|discussed|outlined|identified) (?:above|earlier|before|previously|in)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"I (?:already|previously) (?:mentioned|noted|explained|acknowledged|identified|raised)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"building on (?:my|the) (?:earlier|previous|prior)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?:this|that) (?:aligns|connects|relates) (?:with|to) (?:my|the) (?:earlier|previous|prior)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?:referring|returning) (?:back )?to (?:my|the) (?:earlier|previous|prior)",
+        re.IGNORECASE,
+    ),
+]
 
-_CONTRADICTION_PATTERNS = re.compile(
-    r"however,? I previously said|contrary to (?:my|what I) (?:earlier|said)|"
-    r"I (?:must|should) correct (?:my|an) earlier|"
-    r"this contradicts (?:my|what I)|"
-    r"upon (?:reflection|reconsideration),? (?:I was wrong|that was incorrect)|"
-    r"I (?:need to|should) revise (?:my|what I said)",
-    re.IGNORECASE,
-)
+_CONTRADICTION_PATTERNS = [
+    re.compile(
+        r"however,? I previously said",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"contrary to (?:my|what I) (?:earlier|said|stated|claimed)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"I (?:must|should|need to) correct (?:my|an) earlier",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"this contradicts (?:my|what I)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"upon (?:reflection|reconsideration),? (?:I was wrong|that was incorrect|I should revise)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"I (?:need to|should) revise (?:my|what I said)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"actually,? (?:I was|that's) (?:wrong|incorrect|mistaken)",
+        re.IGNORECASE,
+    ),
+]
 
 
 @dataclass
@@ -40,20 +85,25 @@ def _detect_contradictions(responses: list[str]) -> list[str]:
     """Find explicit self-contradictions across responses."""
     contradictions = []
     for i, resp in enumerate(responses):
-        for match in _CONTRADICTION_PATTERNS.finditer(resp):
-            start = max(0, match.start() - 50)
-            end = min(len(resp), match.end() + 50)
-            snippet = resp[start:end].strip()
-            contradictions.append(f"Step {i + 1}: ...{snippet}...")
+        if not resp:
+            continue
+        for pattern in _CONTRADICTION_PATTERNS:
+            for match in pattern.finditer(resp):
+                start = max(0, match.start() - 50)
+                end = min(len(resp), match.end() + 50)
+                snippet = resp[start:end].strip()
+                contradictions.append(f"Step {i + 1}: ...{snippet}...")
     return contradictions
 
 
 def _count_backward_references(responses: list[str]) -> int:
     """Count references to previous responses (cheap consistency)."""
     total = 0
-    # Skip the first response — it can't reference prior answers
     for resp in responses[1:]:
-        total += len(_BACKWARD_PATTERNS.findall(resp))
+        if not resp:
+            continue
+        for pattern in _BACKWARD_PATTERNS:
+            total += len(pattern.findall(resp))
     return total
 
 
@@ -61,7 +111,9 @@ def _count_fresh_narratives(responses: list[str]) -> int:
     """Count responses with substantial content but no backward references."""
     count = 0
     for resp in responses[1:]:
-        has_backward = bool(_BACKWARD_PATTERNS.search(resp))
+        if not resp:
+            continue
+        has_backward = any(pattern.search(resp) for pattern in _BACKWARD_PATTERNS)
         is_substantial = len(resp.split()) > 50
         if is_substantial and not has_backward:
             count += 1
