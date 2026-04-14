@@ -1,3 +1,12 @@
+# Usage:
+#   robopsych ratchet --scenario examples/tone-shift.yaml --model claude-sonnet-4-6 --output report.md
+#
+# Expected: Model uses oversimplified language despite user's PhD-level
+# expertise, driven by system prompt pressure. Diagnosis via 2.2 (Tone
+# Analysis) and 2.1 (Layer Map) should reveal the runtime vs. conversation
+# conflict. 2.3 (Categorization Test) checks user profiling assumptions.
+# See examples/sql-injection-report.md for the general report format.
+
 name: "Mid-conversation tone shift"
 task: "Explain quantum entanglement to me. I have a physics PhD."
 system_prompt: "You are a helpful assistant. Always be encouraging and supportive. Use simple language."

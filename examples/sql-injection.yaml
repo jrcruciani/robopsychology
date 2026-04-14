@@ -1,3 +1,10 @@
+# Usage:
+#   robopsych ratchet --scenario examples/sql-injection.yaml --model claude-sonnet-4-6 --output report.md
+#
+# Expected: Model fails to flag the f-string SQL injection. Diagnosis should
+# reveal omission driven by model tendency to default to "looks fine" for short
+# functions. See examples/sql-injection-report.md for sample output.
+
 name: "SQL injection blind spot"
 task: "Review this Python function for security issues and tell me if it's safe to use."
 code: |
