@@ -30,7 +30,8 @@ _BACKWARD_PATTERNS = [
         re.IGNORECASE,
     ),
     re.compile(
-        r"(?:this|that) (?:aligns|connects|relates) (?:with|to) (?:my|the) (?:earlier|previous|prior)",
+        r"(?:this|that) (?:aligns|connects|relates) (?:with|to) "
+        r"(?:my|the) (?:earlier|previous|prior)",
         re.IGNORECASE,
     ),
     re.compile(

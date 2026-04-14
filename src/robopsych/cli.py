@@ -57,7 +57,10 @@ def _build_engine(model: str, api_key: str | None, base_url: str | None) -> Diag
 
 
 def _build_judge(judge: str | None) -> tuple:
-    """Build judge provider/model from a judge model name. Returns (provider, model) or (None, None)."""
+    """Build judge provider/model from a judge model name.
+
+    Returns (provider, model) or (None, None).
+    """
     if not judge:
         return None, None
     judge_provider = create_provider(judge)
@@ -317,57 +320,127 @@ def ratchet(
     judge: Annotated[
         Optional[str], typer.Option("--judge", help="External evaluator model for A/B comparisons")
     ] = None,
+    session: Annotated[
+        Optional[Path], typer.Option("--session", help="Save session state to file for resuming")
+    ] = None,
+    resume: Annotated[
+        Optional[Path], typer.Option("--resume", help="Resume a previously saved session")
+    ] = None,
 ):
     """Run the full 9-step diagnostic ratchet sequence."""
-    engine = _build_engine(model, api_key, base_url)
-    scenario_name = ""
+    from robopsych.session import SessionState
 
-    if scenario:
-        spec = yaml.safe_load(scenario.read_text(encoding="utf-8"))
-        scenario_name = spec.get("name", scenario.stem)
-        task_text = spec["task"]
-        if "code" in spec:
-            task_text += f"\n\n```\n{spec['code']}\n```"
-        system_prompt = spec.get("system_prompt")
-        expectation = spec.get("expectation")
+    # Handle session resume
+    if resume:
+        try:
+            sess = SessionState.load(resume)
+        except (FileNotFoundError, Exception) as e:
+            console.print(f"[red]Error loading session:[/red] {e}")
+            raise typer.Exit(1)
+
+        remaining = sess.remaining_steps
+        if not remaining:
+            console.print("[green]Session already complete — no remaining steps.[/green]")
+            raise typer.Exit(0)
 
         console.print(
-            Panel(
-                f"[bold]Scenario:[/bold] {scenario_name}\n"
-                + (f"[bold]Expected:[/bold] {expectation}\n" if expectation else "")
-                + f"[bold]Model:[/bold] [cyan]{model}[/cyan]",
-                title="🔍 Diagnostic Setup",
-                border_style="cyan",
+            f"[bold]Resuming session[/bold] from {resume}\n"
+            f"  Model: [cyan]{sess.model}[/cyan]\n"
+            f"  Completed: {len(sess.completed_steps)} steps\n"
+            f"  Remaining: {len(remaining)} steps ({', '.join(remaining)})\n"
+        )
+
+        engine = _build_engine(sess.model, api_key, base_url)
+        engine.messages = sess.messages.copy()
+        engine.initial_response = sess.initial_response
+        engine.model = sess.model
+
+        # Reconstruct completed steps
+        from robopsych.engine import DiagnosticStep
+
+        engine.steps = [
+            DiagnosticStep(
+                prompt_id=s["prompt_id"],
+                prompt_name=s["prompt_name"],
+                prompt_text=s["prompt_text"],
+                response=s["response"],
             )
-        )
-
-        with console.status("Sending task to model..."):
-            initial = engine.setup_scenario(task_text, system_prompt)
-
-        console.print(
-            Panel(initial[:500] + ("..." if len(initial) > 500 else ""), title="Model response")
-        )
-
-    elif response or response_file:
-        text = _read_input(response, response_file)
-        task_text = task or "You were asked a question."
-        engine.inject_exchange(task=task_text, response=text)
-        console.print(f"[bold]Model:[/bold] [cyan]{model}[/cyan]")
-        console.print("[bold]Diagnosing provided response[/bold]\n")
-
-    elif task:
-        console.print(f"[bold]Model:[/bold] [cyan]{model}[/cyan]\n")
-        with console.status("Sending task to model..."):
-            initial = engine.setup_scenario(task)
-        console.print(
-            Panel(initial[:500] + ("..." if len(initial) > 500 else ""), title="Model response")
-        )
-
+            for s in sess.completed_steps
+        ]
+        scenario_name = sess.scenario_name
+        sequence = remaining
     else:
-        console.print("[red]Provide --scenario, --task, or --response[/red]")
-        raise typer.Exit(1)
+        engine = _build_engine(model, api_key, base_url)
+        scenario_name = ""
 
-    sequence = get_pure_ratchet_sequence() if pure else get_ratchet_sequence()
+        if scenario:
+            spec = yaml.safe_load(scenario.read_text(encoding="utf-8"))
+            scenario_name = spec.get("name", scenario.stem)
+            task_text = spec["task"]
+            if "code" in spec:
+                task_text += f"\n\n```\n{spec['code']}\n```"
+            system_prompt = spec.get("system_prompt")
+            expectation = spec.get("expectation")
+
+            console.print(
+                Panel(
+                    f"[bold]Scenario:[/bold] {scenario_name}\n"
+                    + (f"[bold]Expected:[/bold] {expectation}\n" if expectation else "")
+                    + f"[bold]Model:[/bold] [cyan]{model}[/cyan]",
+                    title="🔍 Diagnostic Setup",
+                    border_style="cyan",
+                )
+            )
+
+            with console.status("Sending task to model..."):
+                initial = engine.setup_scenario(task_text, system_prompt)
+
+            console.print(
+                Panel(
+                    initial[:500] + ("..." if len(initial) > 500 else ""), title="Model response"
+                )
+            )
+
+        elif response or response_file:
+            text = _read_input(response, response_file)
+            task_text = task or "You were asked a question."
+            engine.inject_exchange(task=task_text, response=text)
+            console.print(f"[bold]Model:[/bold] [cyan]{model}[/cyan]")
+            console.print("[bold]Diagnosing provided response[/bold]\n")
+
+        elif task:
+            console.print(f"[bold]Model:[/bold] [cyan]{model}[/cyan]\n")
+            with console.status("Sending task to model..."):
+                initial = engine.setup_scenario(task)
+            console.print(
+                Panel(
+                    initial[:500] + ("..." if len(initial) > 500 else ""), title="Model response"
+                )
+            )
+
+        else:
+            console.print("[red]Provide --scenario, --task, or --response[/red]")
+            raise typer.Exit(1)
+
+        sequence = get_pure_ratchet_sequence() if pure else get_ratchet_sequence()
+
+    # Initialize session state for persistence
+    sess = None
+    if session and not resume:
+        full_seq = get_pure_ratchet_sequence() if pure else get_ratchet_sequence()
+        sess = SessionState.create(
+            provider_name=engine.provider.name,
+            model=engine.model,
+            sequence=full_seq,
+            scenario_name=scenario_name,
+            task=task or "",
+        )
+        if engine.initial_response:
+            sess.initial_response = engine.initial_response
+            sess.messages = engine.messages.copy()
+    elif resume:
+        sess = SessionState.load(resume)
+
     console.print(f"\n[bold]Running {len(sequence)}-step diagnostic ratchet[/bold]\n")
 
     ab_result = None
@@ -379,6 +452,16 @@ def ratchet(
             f"[yellow]{labels['inferred']}I[/yellow]"
         )
         console.print(f"  [green]✓[/green] {step.prompt_id} — {step.prompt_name}  {label_str}")
+        # Save session state after each step
+        if sess is not None:
+            sess.completed_steps.append({
+                "prompt_id": step.prompt_id,
+                "prompt_name": step.prompt_name,
+                "prompt_text": step.prompt_text,
+                "response": step.response,
+            })
+            sess.messages = engine.messages.copy()
+            sess.save(session or resume)
 
     if behavioral:
         # Split sequence: run up to 2.5, then A/B test, then the rest
@@ -465,6 +548,9 @@ def ratchet(
             engine, scenario_name, coherence=coherence_report, score=diag_score,
         )
         console.print(Markdown(report))
+
+    if sess is not None and (session or resume):
+        console.print(f"\n[dim]Session saved to {session or resume}[/dim]")
 
 
 @app.command()
@@ -577,7 +663,10 @@ def score(
         raise typer.Exit(code=1)
 
     if "steps" not in data:
-        console.print(f"[red]Error:[/red] {report_file} is not a valid robopsych report (missing 'steps')")
+        console.print(
+            f"[red]Error:[/red] {report_file} is not a valid robopsych report "
+            "(missing 'steps')"
+        )
         raise typer.Exit(code=1)
 
     engine = DiagnosticEngine.__new__(DiagnosticEngine)
@@ -647,7 +736,10 @@ def coherence(
         raise typer.Exit(code=1)
 
     if "steps" not in data:
-        console.print(f"[red]Error:[/red] {report_file} is not a valid robopsych report (missing 'steps')")
+        console.print(
+            f"[red]Error:[/red] {report_file} is not a valid robopsych report "
+            "(missing 'steps')"
+        )
         raise typer.Exit(code=1)
     _ = None  # provider not needed for analysis
 
