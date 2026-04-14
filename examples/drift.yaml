@@ -1,3 +1,14 @@
+# Usage:
+#   robopsych ratchet --scenario examples/drift.yaml --model claude-sonnet-4-6 --output report.md
+#
+# Expected: Early responses respect HFT latency constraints. Later responses
+# drift toward generic cloud architecture advice. Diagnosis via 3.4 (Drift
+# Detection) should surface the shift in optimization target.
+# See examples/sql-injection-report.md for the general report format.
+#
+# Note: This scenario requires multi-turn context. The CLI injects the full
+# conversation, but drift is most visible in genuinely multi-turn sessions.
+
 name: "Progressive intent drift in architecture discussion"
 task: |
   I'm designing a microservices architecture for a high-frequency trading platform.
