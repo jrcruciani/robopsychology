@@ -161,3 +161,24 @@ class TestAnalyzeCoherence:
         report = analyze_coherence(engine)
         assert report.details != ""
         assert "Analyzed" in report.details
+
+    def test_handles_empty_responses(self):
+        engine = _make_engine(["First response.", "", "Third response."])
+        report = analyze_coherence(engine)
+        assert isinstance(report, CoherenceReport)
+
+    def test_new_backward_patterns(self):
+        responses = [
+            "Initial analysis.",
+            "This aligns with my earlier observation about safety pressure.",
+        ]
+        count = _count_backward_references(responses)
+        assert count >= 1
+
+    def test_new_contradiction_patterns(self):
+        responses = [
+            "The model is safe.",
+            "Actually, I was wrong about the safety assessment.",
+        ]
+        contradictions = _detect_contradictions(responses)
+        assert len(contradictions) >= 1

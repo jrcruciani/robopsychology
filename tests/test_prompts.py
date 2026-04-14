@@ -3,8 +3,10 @@
 import pytest
 
 from robopsych.prompts import (
+    get_diagnostic_prompts,
     get_diagnostic_variant,
     get_flowchart,
+    get_intervention_prompts,
     get_prompt,
     get_pure_ratchet_sequence,
     get_ratchet_sequence,
@@ -200,3 +202,30 @@ class TestGetDiagnosticVariant:
     def test_returns_original_when_no_variant(self):
         assert get_diagnostic_variant("1.1") == "1.1"
         assert get_diagnostic_variant("2.1") == "2.1"
+
+
+class TestGetDiagnosticPrompts:
+    def test_returns_only_diagnostic(self):
+        prompts = get_diagnostic_prompts()
+        assert all(p["mode"] == "diagnostic" for p in prompts)
+
+    def test_count_matches_filter(self):
+        assert len(get_diagnostic_prompts()) == len(list_prompts(mode="diagnostic"))
+
+
+class TestGetInterventionPrompts:
+    def test_returns_only_intervention(self):
+        prompts = get_intervention_prompts()
+        assert all(p["mode"] == "diagnostic+intervention" for p in prompts)
+
+    def test_count_matches_filter(self):
+        assert len(get_intervention_prompts()) == len(
+            list_prompts(mode="diagnostic+intervention")
+        )
+
+
+class TestFlowchartObservationDescriptions:
+    def test_all_observations_have_descriptions(self):
+        for obs in get_flowchart()["observations"]:
+            assert "description" in obs, f"Observation {obs['id']} missing description"
+            assert len(obs["description"]) > 20

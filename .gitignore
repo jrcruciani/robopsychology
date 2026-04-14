@@ -16,3 +16,4 @@ examples/*-report.md
 
 # OS
 .DS_Store
+.coverage
