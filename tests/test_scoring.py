@@ -35,17 +35,16 @@ class TestAggregateLabels:
     def test_counts_across_steps(self):
         engine = _make_engine([
             "This is Observed behavior. Also Inferred tendency.",
-            "This is Opaque to me. Another Observed fact.",
+            "Another Inferred claim. Another Observed fact.",
         ])
         labels = _aggregate_labels(engine)
         assert labels["observed"] == 2
-        assert labels["inferred"] == 1
-        assert labels["opaque"] == 1
+        assert labels["inferred"] == 2
 
     def test_empty_engine(self):
         engine = _make_engine([])
         labels = _aggregate_labels(engine)
-        assert labels == {"observed": 0, "inferred": 0, "opaque": 0}
+        assert labels == {"observed": 0, "inferred": 0}
 
 
 class TestMeasureLayerSeparation:
@@ -141,8 +140,7 @@ class TestScoreDiagnosis:
         assert 0.0 <= result.overall_confidence <= 1.0
 
     def test_label_distribution(self):
-        engine = _make_engine(["Observed x3. Inferred x1. Opaque x2."])
+        engine = _make_engine(["Observed x3. Inferred x1."])
         result = score_diagnosis(engine)
         assert "observed" in result.label_distribution
         assert "inferred" in result.label_distribution
-        assert "opaque" in result.label_distribution

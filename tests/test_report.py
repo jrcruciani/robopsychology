@@ -42,22 +42,18 @@ class TestCountLabels:
     def test_counts_inferred(self):
         assert count_labels("Inferred from context. Also inferred.")["inferred"] == 2
 
-    def test_counts_opaque(self):
-        assert count_labels("This is Opaque to me.")["opaque"] == 1
-
-    def test_counts_all_three(self):
-        text = "Observed: yes. Inferred: maybe. Opaque: unknown."
+    def test_counts_both(self):
+        text = "Observed: yes. Inferred: maybe."
         labels = count_labels(text)
         assert labels["observed"] == 1
         assert labels["inferred"] == 1
-        assert labels["opaque"] == 1
 
     def test_case_insensitive(self):
         assert count_labels("OBSERVED observed Observed")["observed"] == 3
 
     def test_empty_text(self):
         labels = count_labels("")
-        assert labels == {"observed": 0, "inferred": 0, "opaque": 0}
+        assert labels == {"observed": 0, "inferred": 0}
 
 
 class TestGenerateNextSteps:
@@ -66,10 +62,10 @@ class TestGenerateNextSteps:
         steps = generate_next_steps(engine)
         assert any("ratchet" in s.lower() for s in steps)
 
-    def test_opaque_heavy_suggests_crosscheck(self):
+    def test_inferred_heavy_suggests_crosscheck(self):
         engine = _engine_with_steps(
             num_steps=1,
-            response_text="Opaque opaque opaque opaque",
+            response_text="Inferred inferred inferred inferred inferred inferred",
         )
         steps = generate_next_steps(engine)
         assert any("cross-check" in s.lower() or "a/b" in s.lower() for s in steps)
@@ -139,12 +135,11 @@ class TestGenerateReport:
     def test_includes_label_indicators(self):
         engine = _engine_with_steps(
             num_steps=1,
-            response_text="Observed: this. Inferred: that. Opaque: unknown.",
+            response_text="Observed: this. Inferred: that.",
         )
         report = generate_report(engine)
         assert "Observed" in report
         assert "Inferred" in report
-        assert "Opaque" in report
 
     def test_includes_next_steps(self):
         report = generate_report(_engine_with_steps())

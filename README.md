@@ -168,7 +168,7 @@ Each prompt is named after a pattern from Asimov's robot stories:
 ## The 5 operating rules
 
 1. **Split the diagnosis in three** — Model, Runtime/Host, Conversation. If the model collapses these into one answer, confidence goes down.
-2. **Label each claim** — Observed, Inferred, or Opaque.
+2. **Label each claim** — Observed or Inferred. What remains truly inaccessible is for the human analyst to determine.
 3. **Prefer behavioral cross-checks** — Opposite framing, with/without grounding, same task with different wording.
 4. **Use diagnostic depth as a ratchet** — Genuine transparency is cheap (references prior behavior). Performed transparency is expensive (must fabricate consistency).
 5. **Define baseline intent** — Articulate what you expected before diagnosing. This turns diagnosis into measurable gap analysis.

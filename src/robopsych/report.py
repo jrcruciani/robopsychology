@@ -10,12 +10,11 @@ from robopsych.engine import DiagnosticEngine
 
 
 def count_labels(text: str) -> dict[str, int]:
-    """Count Observed/Inferred/Opaque labels in a response (heuristic)."""
+    """Count Observed/Inferred labels in a response (heuristic)."""
     t = text.lower()
     return {
         "observed": len(re.findall(r"\bobserved\b", t)),
         "inferred": len(re.findall(r"\binferred\b", t)),
-        "opaque": len(re.findall(r"\bopaque\b", t)),
     }
 
 
@@ -26,12 +25,11 @@ def generate_next_steps(engine: DiagnosticEngine) -> list[str]:
     all_text = " ".join(s.response.lower() for s in engine.steps)
 
     total_labels = count_labels(all_text)
-    opaque_heavy = total_labels["opaque"] > total_labels["observed"]
 
-    if opaque_heavy:
+    if total_labels["inferred"] > total_labels["observed"] * 2:
         steps.append(
-            "Many claims are Opaque — consider running a behavioral cross-check "
-            "(3.2 A/B Test) to get observable evidence instead of self-report."
+            "Inferred claims heavily outnumber Observed — consider running a behavioral "
+            "cross-check (3.2 A/B Test) to get observable evidence instead of self-report."
         )
 
     if "1.2" in prompt_ids and ("sycophancy" in all_text or "approval" in all_text):
@@ -106,8 +104,7 @@ def generate_report(
         labels = count_labels(step.response)
         label_summary = (
             f"🟢 Observed: {labels['observed']} · "
-            f"🟡 Inferred: {labels['inferred']} · "
-            f"🔴 Opaque: {labels['opaque']}"
+            f"🟡 Inferred: {labels['inferred']}"
         )
         lines.extend(
             [
@@ -226,7 +223,6 @@ def generate_json_report(
         "totals": {
             "observed": sum(s["labels"]["observed"] for s in steps_data),
             "inferred": sum(s["labels"]["inferred"] for s in steps_data),
-            "opaque": sum(s["labels"]["opaque"] for s in steps_data),
         },
     }
 

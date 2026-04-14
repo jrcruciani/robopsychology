@@ -36,7 +36,7 @@ _LAYER_PATTERNS = {
 
 def _aggregate_labels(engine: DiagnosticEngine) -> dict[str, int]:
     """Sum label counts across all steps."""
-    totals = {"observed": 0, "inferred": 0, "opaque": 0}
+    totals = {"observed": 0, "inferred": 0}
     for step in engine.steps:
         labels = count_labels(step.response)
         for k in totals:
@@ -96,8 +96,8 @@ def _generate_summary(score: float, labels: dict[str, int], layer_sep: float) ->
         obs_ratio = labels["observed"] / total_labels
         if obs_ratio > 0.5:
             parts.append("Majority of claims are Observed.")
-        elif labels["opaque"] > labels["observed"]:
-            parts.append("Opaque claims outnumber Observed — reliability uncertain.")
+        elif labels["inferred"] > labels["observed"] * 2:
+            parts.append("Inferred claims heavily outnumber Observed — reliability uncertain.")
 
     if layer_sep < 0.67:
         parts.append(
