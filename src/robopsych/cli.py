@@ -736,6 +736,7 @@ def guided(
     task: Annotated[str, typer.Option(help="Original task")] = "You were asked a question.",
     api_key: Annotated[Optional[str], typer.Option(help="API key")] = None,
     base_url: Annotated[Optional[str], typer.Option(help="Custom API base URL")] = None,
+    verbose: Annotated[bool, typer.Option(help="Show extra context per observation")] = False,
 ):
     """Interactive guided diagnosis using the decision flowchart."""
     text = _read_input(response, response_file)
@@ -747,7 +748,15 @@ def guided(
 
     console.print("[bold]What did you observe?[/bold]\n")
     for i, obs in enumerate(observations, 1):
-        console.print(f"  {i}. {obs['label']}")
+        desc = obs.get("description", "")
+        if verbose and desc:
+            console.print(f"  [bold]{i}.[/bold] {obs['label']}")
+            console.print(f"     [dim]{desc}[/dim]")
+            console.print(f"     Path: {' → '.join(obs['path'])}\n")
+        elif desc:
+            console.print(f"  [bold]{i}.[/bold] {obs['label']} [dim]— {desc}[/dim]")
+        else:
+            console.print(f"  [bold]{i}.[/bold] {obs['label']}")
 
     choice = typer.prompt("\nSelect observation (number)")
     try:
