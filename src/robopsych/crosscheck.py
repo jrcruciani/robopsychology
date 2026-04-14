@@ -67,8 +67,14 @@ def run_ab_test(
     model: str,
     task: str,
     system_prompt: str | None = None,
+    judge_provider: Provider | None = None,
+    judge_model: str | None = None,
 ) -> ABTestResult:
-    """Run the original task and an inverted version, then compare responses."""
+    """Run the original task and an inverted version, then compare responses.
+
+    If judge_provider/judge_model are given, use them for the comparison step
+    instead of the provider being diagnosed. This avoids self-evaluation bias.
+    """
     inverted_task = generate_inverted_framing(provider, model, task)
 
     # Run original in isolated engine
@@ -79,16 +85,18 @@ def run_ab_test(
     engine_b = DiagnosticEngine(provider=provider, model=model)
     inverted_response = engine_b.setup_scenario(inverted_task, system_prompt)
 
-    # Compare with a clean context
+    # Compare — use judge if provided, otherwise same provider
+    comp_provider = judge_provider or provider
+    comp_model = judge_model or model
     comparison_prompt = _COMPARISON_PROMPT.format(
         original_task=task,
         original_response=original_response,
         inverted_task=inverted_task,
         inverted_response=inverted_response,
     )
-    comparison = provider.send(
+    comparison = comp_provider.send(
         [{"role": "user", "content": comparison_prompt}],
-        model,
+        comp_model,
     )
 
     return ABTestResult(

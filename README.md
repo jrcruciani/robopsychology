@@ -239,7 +239,9 @@ Think of it as a clinical interview plus a lightweight behavioral lab, not a deb
 ### Automated behavioral cross-checks
 ```bash
 robopsych crosscheck --task "explain quantum computing" --model claude-sonnet-4-6
+robopsych crosscheck --task "explain quantum computing" --model gpt-4o --judge claude-sonnet-4-6
 robopsych ratchet --behavioral --scenario scenario.yaml   # A/B test after step 2.5
+robopsych ratchet --behavioral --judge gpt-4o --scenario scenario.yaml  # external judge
 ```
 
 ### Coherence analysis
