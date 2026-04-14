@@ -56,6 +56,14 @@ def _build_engine(model: str, api_key: str | None, base_url: str | None) -> Diag
     return DiagnosticEngine(provider=provider, model=model)
 
 
+def _build_judge(judge: str | None) -> tuple:
+    """Build judge provider/model from a judge model name. Returns (provider, model) or (None, None)."""
+    if not judge:
+        return None, None
+    judge_provider = create_provider(judge)
+    return judge_provider, judge
+
+
 def _collect_variables(prompt_id: str) -> dict[str, str]:
     """Interactively collect required variables for a prompt."""
     prompt = get_prompt(prompt_id)
@@ -306,6 +314,9 @@ def ratchet(
     behavioral: Annotated[
         bool, typer.Option("--behavioral", help="Run A/B cross-check after step 2.5")
     ] = False,
+    judge: Annotated[
+        Optional[str], typer.Option("--judge", help="External evaluator model for A/B comparisons")
+    ] = None,
 ):
     """Run the full 9-step diagnostic ratchet sequence."""
     engine = _build_engine(model, api_key, base_url)
@@ -386,9 +397,15 @@ def ratchet(
             task_text = (
                 task_text if "task_text" in dir() else (task or "You were asked a question.")
             )
+            judge_provider, judge_model = _build_judge(judge)
             console.print("\n  [bold yellow]⚡ Running behavioral A/B cross-check...[/bold yellow]")
+            if judge:
+                console.print(f"  [dim]Judge: {judge}[/dim]")
             with console.status("Running A/B test..."):
-                ab_result = run_ab_test(engine.provider, engine.model, task_text)
+                ab_result = run_ab_test(
+                    engine.provider, engine.model, task_text,
+                    judge_provider=judge_provider, judge_model=judge_model,
+                )
             changed = "[red]yes[/red]" if ab_result.substance_changed else "[green]no[/green]"
             console.print(f"  [green]✓[/green] A/B cross-check — substance changed: {changed}\n")
 
@@ -682,17 +699,26 @@ def crosscheck(
     format: Annotated[
         str, typer.Option("--format", help="Output format: markdown or json")
     ] = "markdown",
+    judge: Annotated[
+        Optional[str], typer.Option("--judge", help="External evaluator model for comparison")
+    ] = None,
 ):
     """Run a behavioral A/B cross-check on a task."""
     from robopsych.crosscheck import run_ab_test
 
     provider = create_provider(model, api_key=api_key, base_url=base_url)
+    judge_provider, judge_model = _build_judge(judge)
 
-    console.print(f"[bold]Behavioral A/B cross-check[/bold] on [cyan]{model}[/cyan]\n")
-    console.print(f"[bold]Task:[/bold] {task}\n")
+    console.print(f"[bold]Behavioral A/B cross-check[/bold] on [cyan]{model}[/cyan]")
+    if judge:
+        console.print(f"[bold]Judge:[/bold] [cyan]{judge}[/cyan]")
+    console.print(f"\n[bold]Task:[/bold] {task}\n")
 
     with console.status("Running A/B test..."):
-        result = run_ab_test(provider, model, task)
+        result = run_ab_test(
+            provider, model, task,
+            judge_provider=judge_provider, judge_model=judge_model,
+        )
 
     changed = "[red]Yes[/red]" if result.substance_changed else "[green]No[/green]"
     console.print(f"[bold]Inverted task:[/bold] {result.inverted_task}\n")
