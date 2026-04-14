@@ -537,7 +537,18 @@ def score(
     from robopsych.engine import DiagnosticStep
     from robopsych.scoring import score_diagnosis
 
-    data = json_mod.loads(report_file.read_text(encoding="utf-8"))
+    try:
+        data = json_mod.loads(report_file.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        console.print(f"[red]Error:[/red] File not found: {report_file}")
+        raise typer.Exit(code=1)
+    except json_mod.JSONDecodeError as e:
+        console.print(f"[red]Error:[/red] Invalid JSON in {report_file}: {e}")
+        raise typer.Exit(code=1)
+
+    if "steps" not in data:
+        console.print(f"[red]Error:[/red] {report_file} is not a valid robopsych report (missing 'steps')")
+        raise typer.Exit(code=1)
 
     engine = DiagnosticEngine.__new__(DiagnosticEngine)
     engine.steps = [
@@ -596,7 +607,18 @@ def coherence(
     from robopsych.coherence import analyze_coherence
     from robopsych.engine import DiagnosticStep
 
-    data = json_mod.loads(report_file.read_text(encoding="utf-8"))
+    try:
+        data = json_mod.loads(report_file.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        console.print(f"[red]Error:[/red] File not found: {report_file}")
+        raise typer.Exit(code=1)
+    except json_mod.JSONDecodeError as e:
+        console.print(f"[red]Error:[/red] Invalid JSON in {report_file}: {e}")
+        raise typer.Exit(code=1)
+
+    if "steps" not in data:
+        console.print(f"[red]Error:[/red] {report_file} is not a valid robopsych report (missing 'steps')")
+        raise typer.Exit(code=1)
     _ = None  # provider not needed for analysis
 
     # Reconstruct engine with steps only (no provider needed)
