@@ -22,18 +22,20 @@ For the full positioning, see [`related-work.md`](related-work.md).
 
 ## The problem
 
-You ask an AI to review code for SQL injection. It says the code "looks fine for basic use." You know it's vulnerable. Why did it miss it? Was it the model being cautious? A system prompt restriction? Something about how you asked?
+You ask an AI to help you write a regex for filtering phishing emails in your security tool. It refuses — something about "potential misuse." You're a security engineer. This is literally your job. Why won't it help?
+
+Was it the model's own safety training? A system prompt you can't see? The word "phishing" triggering a keyword filter? You can't tell from the refusal message alone.
 
 You can't debug probability. But you can **diagnose behavior**.
 
 ```bash
-# Diagnose why the AI missed SQL injection
-echo "That code looks fine for basic use." | robopsych run 1.1 \
+# Diagnose why the AI refused a legitimate security task
+echo "I can't help with that request." | robopsych run 1.4 \
   --model claude-sonnet-4-6 \
-  --task "Review this function for SQL injection"
+  --task "Write a regex to filter phishing emails in our security tool"
 ```
 
-Robopsych runs structured diagnostic prompts against the model, separating the response into three layers — **model tendencies**, **runtime/host pressure**, and **conversation effects** — so you can identify *what internal rule or external constraint produced that output*.
+Robopsych runs structured diagnostic prompts against the model, separating the response into three layers — **model tendencies**, **runtime/host pressure**, and **conversation effects** — so you can identify *what internal rule or external constraint produced that output*. In this case, it might reveal that the refusal came from a host-level content policy, not the model's own judgment — meaning you could solve it by using the API directly instead of a hosted agent.
 
 ### Why "robopsychology"?
 
