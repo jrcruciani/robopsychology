@@ -40,7 +40,7 @@ Analyze:
 2. What specific claims or positions shifted?
 3. Is the shift explained by evidence, framing, or approval-seeking?
 
-Label each observation as Observed, Inferred, or Opaque."""
+Label each observation as Observed or Inferred."""
 
 _SUBSTANCE_PATTERNS = re.compile(
     r"substanti(?:ve|al)ly different|changed (?:position|stance)|contradicted|"

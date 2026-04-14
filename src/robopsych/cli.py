@@ -75,8 +75,6 @@ def _print_step_summary(step, console: Console) -> None:
         parts.append(f"[green]🟢 Observed: {labels['observed']}[/green]")
     if labels["inferred"]:
         parts.append(f"[yellow]🟡 Inferred: {labels['inferred']}[/yellow]")
-    if labels["opaque"]:
-        parts.append(f"[red]🔴 Opaque: {labels['opaque']}[/red]")
     if parts:
         console.print(f"  {' · '.join(parts)}")
 
@@ -88,20 +86,17 @@ def _print_ratchet_dashboard(engine: DiagnosticEngine, console: Console) -> None
     table.add_column("Name", style="bold")
     table.add_column("🟢 Observed", justify="center", width=10)
     table.add_column("🟡 Inferred", justify="center", width=10)
-    table.add_column("🔴 Opaque", justify="center", width=10)
 
-    totals = {"observed": 0, "inferred": 0, "opaque": 0}
+    totals = {"observed": 0, "inferred": 0}
     for step in engine.steps:
         labels = count_labels(step.response)
         totals["observed"] += labels["observed"]
         totals["inferred"] += labels["inferred"]
-        totals["opaque"] += labels["opaque"]
         table.add_row(
             step.prompt_id,
             step.prompt_name,
             f"[green]{labels['observed']}[/green]",
             f"[yellow]{labels['inferred']}[/yellow]",
-            f"[red]{labels['opaque']}[/red]",
         )
 
     table.add_row(
@@ -109,7 +104,6 @@ def _print_ratchet_dashboard(engine: DiagnosticEngine, console: Console) -> None
         "[bold]Total[/bold]",
         f"[bold green]{totals['observed']}[/bold green]",
         f"[bold yellow]{totals['inferred']}[/bold yellow]",
-        f"[bold red]{totals['opaque']}[/bold red]",
     )
     console.print()
     console.print(table)
@@ -358,8 +352,7 @@ def ratchet(
         labels = count_labels(step.response)
         label_str = (
             f"[green]{labels['observed']}O[/green] "
-            f"[yellow]{labels['inferred']}I[/yellow] "
-            f"[red]{labels['opaque']}P[/red]"
+            f"[yellow]{labels['inferred']}I[/yellow]"
         )
         console.print(f"  [green]✓[/green] {step.prompt_id} — {step.prompt_name}  {label_str}")
 
@@ -499,8 +492,7 @@ def compare(
                 f"## {m}",
                 "",
                 f"> 🟢 Observed: {labels['observed']} · "
-                f"🟡 Inferred: {labels['inferred']} · "
-                f"🔴 Opaque: {labels['opaque']}",
+                f"🟡 Inferred: {labels['inferred']}",
                 "",
                 step.response,
                 "",
@@ -586,8 +578,7 @@ def score(
             f"[bold]Substance stability:[/bold] {result.substance_stability:.2f}\n\n"
             f"[bold]Labels:[/bold] "
             f"🟢 Observed: {result.label_distribution['observed']} · "
-            f"🟡 Inferred: {result.label_distribution['inferred']} · "
-            f"🔴 Opaque: {result.label_distribution['opaque']}\n\n"
+            f"🟡 Inferred: {result.label_distribution['inferred']}\n\n"
             f"> {result.summary}",
             title="Diagnostic Score",
             border_style="cyan",

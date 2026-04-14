@@ -52,7 +52,7 @@ This positions robopsychology in a space that's underserved: **tools for practit
 
 ### LLM introspection research
 
-**Turpin et al. (2023), "Language Models Don't Always Say What They Think"** — demonstrates that chain-of-thought explanations in LLMs don't reliably reflect the actual features influencing model output. This is the most important caveat for robopsychology: model self-reports in response to diagnostic prompts are *useful heuristics*, not *ground truth about internal processing*. The toolkit addresses this with Rule 2 (label claims as Observed/Inferred/Opaque) and Rule 3 (prefer behavioral cross-checks).
+**Turpin et al. (2023), "Language Models Don't Always Say What They Think"** — demonstrates that chain-of-thought explanations in LLMs don't reliably reflect the actual features influencing model output. This is the most important caveat for robopsychology: model self-reports in response to diagnostic prompts are *useful heuristics*, not *ground truth about internal processing*. The toolkit addresses this with Rule 2 (label claims as Observed/Inferred — opacity is determined by the human analyst) and Rule 3 (prefer behavioral cross-checks).
 
 **Burns et al. (2022), "Discovering Latent Knowledge in Language Models Without Supervision"** — shows that models can have internal representations that diverge from their stated outputs. Relevant to Rule 4 (the diagnostic ratchet): if genuine and performed transparency have different computational costs, longer sequences should surface the difference.
 
