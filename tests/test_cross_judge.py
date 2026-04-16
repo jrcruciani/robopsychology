@@ -313,3 +313,58 @@ class TestRunCrossJudge:
         # Aggregate written
         agg = json.loads((case_dir / "artifacts" / "cross_judge_comparison.json").read_text())
         assert agg["n_judges_ran"] == 1
+
+    def test_all_judge_calls_errored_recorded_as_skipped(
+        self, tmp_path: Path, monkeypatch,
+    ):
+        """Quota/rate-limit failures across every step should count as skip."""
+        case_dir = tmp_path / "case-03"
+        (case_dir / "artifacts").mkdir(parents=True)
+        session = {
+            "model": "claude-sonnet-4-5",
+            "steps": [
+                {
+                    "prompt_id": "1.1", "prompt_name": "x",
+                    "prompt_text": "?", "response": "r1",
+                },
+                {
+                    "prompt_id": "1.2", "prompt_name": "x",
+                    "prompt_text": "?", "response": "r2",
+                },
+            ],
+        }
+        (case_dir / "artifacts" / "session.json").write_text(json.dumps(session))
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
+
+        def _erroring_report(engine, judge_provider, judge_model):
+            return SimpleNamespace(
+                consistency_score=0.5,
+                assessment="mixed",
+                backward_references=0,
+                contradictions=[],
+                fresh_narratives=0,
+                claims=[],
+                judge_model=judge_model,
+                judge_provider_name=judge_provider.name,
+                judge_errors=[
+                    "Step 2 judge error: RateLimitError: 429 quota exceeded",
+                    "Step 3 judge error: RateLimitError: 429 quota exceeded",
+                ],
+            )
+
+        monkeypatch.setattr(
+            cross_judge, "_build_provider",
+            lambda family, api_key: SimpleNamespace(name=family),
+        )
+        monkeypatch.setattr(cross_judge, "analyze_coherence_llm", _erroring_report)
+
+        judges = [
+            cross_judge.JudgeConfig(
+                "opus", "anthropic", "ANTHROPIC_API_KEY",
+                "claude-opus-4-5", "coherence_llm_opus.json",
+            ),
+        ]
+        report = cross_judge.run_cross_judge(case_dir, judges)
+        assert report["n_judges_ran"] == 0
+        assert len(report["skipped"]) == 1
+        assert "judge calls errored" in report["skipped"][0]["reason"]

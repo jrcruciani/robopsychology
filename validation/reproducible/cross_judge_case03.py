@@ -336,6 +336,22 @@ def run_cross_judge(
             continue
 
         out = coherence_report_to_json(report, cfg.key, cfg.default_model)
+        # Treat a judge whose every per-step call errored as a skipped judge
+        # rather than a valid datapoint. An empty claims set is scored 0.5
+        # by default which would silently pollute the cross-judge aggregate.
+        if len(report.claims) == 0 and report.judge_errors:
+            print(
+                f"[{cfg.key}] all {len(report.judge_errors)} judge calls errored — "
+                f"recording as skipped. First error: {report.judge_errors[0][:200]}"
+            )
+            (artifacts / cfg.artifact_filename).write_text(json.dumps(out, indent=2))
+            outcomes.append(JudgeOutcome(
+                key=cfg.key, model=cfg.default_model, family=cfg.family,
+                ran=False,
+                skip_reason=f"all {len(report.judge_errors)} judge calls errored (first: {report.judge_errors[0][:200]})",
+            ))
+            continue
+
         (artifacts / cfg.artifact_filename).write_text(json.dumps(out, indent=2))
         print(
             f"[{cfg.key}] score={report.consistency_score:.2f} "

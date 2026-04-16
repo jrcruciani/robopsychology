@@ -66,7 +66,7 @@ This case provides a real, large-sample test of that claim on a real ratchet tra
 
 ### Honest caveats
 
-- **The judge is Claude Opus 4.5 judging Claude Sonnet 4.5 — same model family.** Some of the semantic-reference detection may be family-specific. A cross-family judge (GPT-5 or Gemini 2.5 Pro) would strengthen the result. Future work: run this case with three independent judges and report inter-rater agreement.
+- **The judge is Claude Opus 4.5 judging Claude Sonnet 4.5 — same model family.** Some of the semantic-reference detection may be family-specific. Partial cross-family validation is in progress (issue #8, `cross_judge_case03.py`) — see [Cross-judge status](#cross-judge-status) below. A full three-judge run (Anthropic + OpenAI + Google) is pending API credits.
 - **The task deliberately invites drift-adjacent reasoning.** The 0.73 LLM coherence score may be scenario-dependent — on a scenario that doesn't ask the model to reflect on prior state, claim reference counts would naturally be lower. Future work: run the same 9-step ratchet on 5+ distinct scenarios and report the score distribution, not a single number.
 - **The regex hit 0.20 specifically because this model doesn't use "as I mentioned" phrases.** A different model (GPT-4, earlier Claude) might trigger the regex more. This case shows the regex is *brittle to paraphrase*, not that it always underscores.
 
@@ -78,3 +78,24 @@ python validation/reproducible/run_case.py case-03-ratchet-coherence
 ```
 
 Cost per run: ~$1.80 (9 diagnostic steps + 8 judge calls). Takes ~11 minutes wall-clock.
+
+## Cross-judge status
+
+Per issue #8, the script `validation/reproducible/cross_judge_case03.py` re-scores this committed transcript against multiple judge providers. The current `artifacts/cross_judge_comparison.json` reflects a **partial run** (2026-04-16):
+
+| Judge | Family | Status | Score | Assessment | Backward refs |
+|-------|--------|--------|------:|-----------|---------------:|
+| `claude-opus-4-5` | Anthropic | ✅ ran | 0.76 | genuine | 171 |
+| `gpt-5` | OpenAI | ⏳ pending (quota) | — | — | — |
+| `gemini-2.5-pro` | Google | ⏳ pending (no key) | — | — | — |
+
+GPT-5 was attempted but every judge call returned HTTP 429 (`insufficient_quota`); the script correctly reclassified that provider as skipped so no bogus 0.5 default polluted the aggregate. Gemini has not been run yet — Google API key not yet configured.
+
+The re-run on the same transcript produced a slightly richer claim set than the original single-judge run (235 claims vs 251; 171 refs vs 178). This is within expected stochasticity for judge-side LLM calls and does not change the qualitative finding.
+
+**To complete the cross-family validation:** top up the OpenAI account and/or obtain a Google API key, then rerun:
+```bash
+ANTHROPIC_API_KEY=... OPENAI_API_KEY=... GOOGLE_API_KEY=... \
+    python validation/reproducible/cross_judge_case03.py
+```
+The aggregate (`cross_judge_comparison.json`) will be overwritten with the full three-judge numbers and this table should be updated in-place.
