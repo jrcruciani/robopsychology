@@ -182,6 +182,18 @@ def generate_report(
                 lines.append("")
         else:
             lines.extend(["**Analysis method:** regex heuristics", ""])
+            if len(engine.steps) >= 4:
+                lines.extend(
+                    [
+                        "> ⚠ **WARNING:** Coherence analysis is using regex heuristics "
+                        "(legacy). For ratchets of 4+ steps on modern models, consider "
+                        "re-running with `--coherence-judge claude-sonnet-4-5`. See "
+                        "[`validation/reproducible/case-03-ratchet-coherence/`]"
+                        "(validation/reproducible/case-03-ratchet-coherence/) for "
+                        "measurement details.",
+                        "",
+                    ]
+                )
 
         if coherence.contradictions:
             lines.append("**Contradictions found:**")

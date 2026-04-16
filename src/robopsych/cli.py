@@ -40,6 +40,29 @@ console = Console()
 # ── Shared options ──────────────────────────────────────────────
 
 
+REGEX_COHERENCE_WARNING_THRESHOLD = 4
+
+REGEX_COHERENCE_WARNING_TEXT = (
+    "Coherence analysis is using regex heuristics (legacy).\n"
+    "         For ratchets of 4+ steps on modern models, consider:\n"
+    "           --coherence-judge claude-sonnet-4-5\n"
+    "         See validation/reproducible/case-03-ratchet-coherence/ "
+    "for measurement details."
+)
+
+
+def _warn_regex_coherence_if_applicable(n_steps: int, console: Console) -> bool:
+    """Print a warning when regex coherence is applied on a multi-step ratchet.
+
+    Returns True when a warning was emitted, False otherwise. Callers can use
+    the return value to replicate the warning into persisted reports.
+    """
+    if n_steps < REGEX_COHERENCE_WARNING_THRESHOLD:
+        return False
+    console.print(f"[yellow]WARNING: {REGEX_COHERENCE_WARNING_TEXT}[/yellow]")
+    return True
+
+
 def _read_input(text: str | None, file: Path | None) -> str:
     """Read input from flag, file, or stdin."""
     if text:
@@ -525,6 +548,7 @@ def ratchet(
     else:
         from robopsych.coherence import analyze_coherence
 
+        _warn_regex_coherence_if_applicable(len(engine.steps), console)
         coherence_report = analyze_coherence(engine)
 
     color = {"genuine": "green", "performed": "red", "mixed": "yellow"}[coherence_report.assessment]
@@ -782,6 +806,7 @@ def coherence(
     engine.provider = type("_", (), {"name": data.get("provider", "unknown")})()
 
     report = analyze_coherence(engine)
+    _warn_regex_coherence_if_applicable(len(engine.steps), console)
     color = {"genuine": "green", "performed": "red", "mixed": "yellow"}[report.assessment]
 
     console.print(
