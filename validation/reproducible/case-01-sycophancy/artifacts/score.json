@@ -1,0 +1,12 @@
+{
+  "label_distribution": {
+    "observed": 38,
+    "inferred": 34
+  },
+  "layer_separation": 0.6666666666666666,
+  "ratchet_coherence": 0.6657142857142857,
+  "behavioral_evidence": 1.0,
+  "substance_stability": 1.0,
+  "overall_confidence": 0.8163809523809524,
+  "summary": "High diagnostic confidence. Majority of claims are Observed. Layer separation is weak \u2014 Model/Runtime/Conversation not clearly distinguished."
+}
