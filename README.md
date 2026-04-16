@@ -291,6 +291,7 @@ robopsych ratchet --model gemini-2.0-flash --scenario scenario.yaml
 
 ## Version history
 
+- **v4.0** — LLM-judge coherence analysis (opt-in `--coherence-judge`), structured `[Observed]/[Inferred]` label enforcement with parser fallback, three reproducible case studies with live-API artifacts (`validation/reproducible/`)
 - **v3.1** — Hermes 4 review: remove Opaque label (human analyst judgment), external judge for A/B cross-checks (`--judge`), session persistence (`--session`/`--resume`), guided mode UX with descriptions, CLI mode consistency (`--diagnostic-only`/`--intervention-only`), hardened coherence analysis, JSON error handling, improved examples, README positioning
 - **v3.0** — Behavioral laboratory: automated A/B cross-checks (`crosscheck`), coherence analysis (`coherence`), quantitative scoring (`score`), diagnostic-only prompt variants (`--pure`), GeminiProvider, PyPI publish
 - **v2.6** — CLI improvements: test suite (84 tests), GitHub Actions CI, guided welcome on no-args, `robopsych list` groups by observation, `--format json` for structured output, visual label indicators (🟢🟡🔴), diagnostic summary dashboard, heuristic next-steps recommendations in reports

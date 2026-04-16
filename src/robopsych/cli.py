@@ -140,7 +140,7 @@ def main(ctx: typer.Context):
                 "Start with [cyan]robopsych guided[/cyan] for interactive diagnosis,\n"
                 "or [cyan]robopsych list[/cyan] to see all available prompts.\n\n"
                 "Use [cyan]robopsych --help[/cyan] for all commands.",
-                title="🔍 Robopsychology v3.1",
+                title="🔍 Robopsychology v4.0",
                 border_style="cyan",
             )
         )

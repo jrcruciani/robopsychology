@@ -82,12 +82,12 @@ _COLON_PREFIX = re.compile(
 
 
 def _normalize_label(raw: str) -> Label:
-    l = raw.lower().replace("-", " ").strip()
-    if l == "observed" or l == "anchored":
+    norm = raw.lower().replace("-", " ").strip()
+    if norm == "observed" or norm == "anchored":
         return Label.OBSERVED
-    if l == "inferred":
+    if norm == "inferred":
         return Label.INFERRED
-    if l == "weakly grounded":
+    if norm == "weakly grounded":
         return Label.WEAKLY_GROUNDED
     raise ValueError(f"Unknown label: {raw!r}")
 
