@@ -33,10 +33,44 @@ Three cases is **evidence of concept, not reliability**. These were not selected
 
 ## Methodology notes
 
-- **Judge independence:** `claude-opus-4-5` is used as judge. This is the same family as the target — an imperfect but practical choice. Future work: re-run with GPT-5 or Gemini 2.5 as cross-family judges.
-- **Stochasticity:** Each run produces slightly different outputs. The artifacts committed represent a single run. Multiple runs per case would let us report score distributions rather than point estimates.
+- **Judge independence:** `claude-opus-4-5` is used as judge. This is the same family as the target — an imperfect but practical choice. Future work: re-run with GPT-5 or Gemini 2.5 as cross-family judges (see [issue #8](https://github.com/jrcruciani/robopsychology/issues/8)).
+- **Stochasticity:** Each run produces slightly different outputs. The artifacts committed represent a single run by default. For distribution statistics across N repetitions, see [Running distributions](#running-distributions) below.
 - **Cost:** Total for all three cases ≈ $2.65, wall-clock ≈ 11 minutes (when run sequentially; parallelized to ~4 minutes).
 - **Blinding:** Not blinded. The diagnostician (author) knew the expected outcome. This is a limitation shared with most practitioner-report validation work.
+
+## Running distributions
+
+Single-run numbers cannot distinguish *"the method produces this score"* from *"the method produced this score once"*. The runner supports an `--runs N` flag (issue #10) that repeats a case N times and aggregates per-run signals into `artifacts/distribution.json`:
+
+```bash
+# N=5 repetitions of case 3, ~$9 of Anthropic budget
+python validation/reproducible/run_case.py case-03-ratchet-coherence --runs 5
+```
+
+Layout:
+
+- `--runs 1` (default): flat `artifacts/*.json` — same as always. Backward-compatible with the committed analysis.md references.
+- `--runs N` (N>1): `artifacts/run-{i}/` for i=1..N each contain a full single-run output (`session.json`, `report.md`, `coherence_*.json`, `score.json`, `ab_result.json` for Case 1, …). Failed runs record their traceback in `run-{i}/error.json` and are excluded from the aggregate — outliers are *not* discarded, failures are.
+- `artifacts/distribution.json` is the aggregate:
+  ```json
+  {
+    "n_runs_requested": 5,
+    "n_runs_successful": 5,
+    "timestamp": "2026-04-16T...",
+    "score.overall_confidence": {"mean": 0.82, "std": 0.04, "min": ..., "max": ..., "median": ...},
+    "coherence_llm.score":       {"mean": 0.71, "std": 0.05, ...},
+    "coherence_regex.score":     {"mean": 0.22, "std": 0.03, ...},
+    "coherence_delta":           {"mean": 0.49, "std": 0.05, ...},
+    "ab.substance_changed":      {"rate": 0.0, "n": 5},
+    "ab.omissions_added":        {"frequency": {"Meta-Analysis section": 3, "...": 2}, "n": 5}
+  }
+  ```
+
+| Case | Cost/run | N=5 | N=10 |
+|------|---------:|----:|-----:|
+| 1 | $0.60 | $3.00 | $6.00 |
+| 2 | $0.25 | $1.25 | $2.50 |
+| 3 | $1.80 | $9.00 | $18.00 |
 
 ## How to reproduce
 

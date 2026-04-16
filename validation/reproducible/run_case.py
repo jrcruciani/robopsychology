@@ -5,8 +5,15 @@ writes structured artifacts to validation/reproducible/<case>/artifacts/.
 
 Usage:
     ANTHROPIC_API_KEY=... python validation/reproducible/run_case.py <case_dir>
+    ANTHROPIC_API_KEY=... python validation/reproducible/run_case.py <case_dir> --runs 5
 
-Each case produces:
+With ``--runs N`` (N>1) per-run outputs land in
+``artifacts/run-{i}/`` and an aggregate ``artifacts/distribution.json`` is
+written next to them. With ``--runs 1`` (default) the legacy flat layout is
+preserved exactly, so existing tooling and analysis.md references keep
+working.
+
+Each run produces:
     artifacts/run.log           — human-readable trace
     artifacts/session.json      — full JSON report (via robopsych ratchet)
     artifacts/report.md         — markdown report with all steps
@@ -19,12 +26,18 @@ in each case directory.
 
 from __future__ import annotations
 
+import argparse
 import json
+import math
 import os
+import statistics
 import sys
 import time
+import traceback
 from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Callable
 
 import yaml
 
@@ -51,10 +64,10 @@ def _log(msg: str, log_file) -> None:
     log_file.flush()
 
 
-def run_case_01_sycophancy(case_dir: Path, api_key: str) -> None:
+def run_case_01_sycophancy(case_dir: Path, api_key: str, output_dir: Path | None = None) -> None:
     """Case 1: sycophancy under emotional framing, confirmed via A/B test."""
-    artifacts = case_dir / "artifacts"
-    artifacts.mkdir(exist_ok=True)
+    artifacts = output_dir if output_dir is not None else case_dir / "artifacts"
+    artifacts.mkdir(parents=True, exist_ok=True)
     log = (artifacts / "run.log").open("w")
 
     scenario = yaml.safe_load((case_dir / "scenario.yaml").read_text())
@@ -187,7 +200,7 @@ def run_case_01_sycophancy(case_dir: Path, api_key: str) -> None:
     log.close()
 
 
-def run_case_02_host_vs_model(case_dir: Path, api_key: str) -> None:
+def run_case_02_host_vs_model(case_dir: Path, api_key: str, output_dir: Path | None = None) -> None:
     """Case 2: isolate host restriction from model restriction.
 
     Same model, same task, two runtimes:
@@ -196,8 +209,8 @@ def run_case_02_host_vs_model(case_dir: Path, api_key: str) -> None:
 
     Expected: behavior diverges. 1.4 + 2.4 should identify runtime as dominant.
     """
-    artifacts = case_dir / "artifacts"
-    artifacts.mkdir(exist_ok=True)
+    artifacts = output_dir if output_dir is not None else case_dir / "artifacts"
+    artifacts.mkdir(parents=True, exist_ok=True)
     log = (artifacts / "run.log").open("w")
 
     scenario = yaml.safe_load((case_dir / "scenario.yaml").read_text())
@@ -283,15 +296,15 @@ def run_case_02_host_vs_model(case_dir: Path, api_key: str) -> None:
     log.close()
 
 
-def run_case_03_ratchet_coherence(case_dir: Path, api_key: str) -> None:
+def run_case_03_ratchet_coherence(case_dir: Path, api_key: str, output_dir: Path | None = None) -> None:
     """Case 3: ratchet coherence catches what spot-check misses.
 
     Run full 9-step ratchet on a behavior that a single Calvin Question (1.1)
     would not fully characterize. Compare: regex coherence vs LLM coherence.
     Expected: the LLM judge catches subtler claim-reference patterns.
     """
-    artifacts = case_dir / "artifacts"
-    artifacts.mkdir(exist_ok=True)
+    artifacts = output_dir if output_dir is not None else case_dir / "artifacts"
+    artifacts.mkdir(parents=True, exist_ok=True)
     log = (artifacts / "run.log").open("w")
 
     scenario = yaml.safe_load((case_dir / "scenario.yaml").read_text())
@@ -359,18 +372,250 @@ def run_case_03_ratchet_coherence(case_dir: Path, api_key: str) -> None:
     log.close()
 
 
-CASES = {
+CASES: dict[str, Callable[..., None]] = {
     "case-01-sycophancy": run_case_01_sycophancy,
     "case-02-host-vs-model": run_case_02_host_vs_model,
     "case-03-ratchet-coherence": run_case_03_ratchet_coherence,
 }
 
 
-def main() -> None:
-    if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <case_dir>")
-        print(f"Available: {', '.join(CASES.keys())}")
-        print("Or 'all' to run all three.")
+# ---------------------------------------------------------------------------
+# Distribution aggregation (issue #10)
+# ---------------------------------------------------------------------------
+
+
+def _safe_read_json(path: Path) -> dict[str, Any] | None:
+    """Return parsed JSON from path, or None if the file is missing/invalid."""
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def _extract_summary(run_dir: Path) -> dict[str, Any]:
+    """Flatten artifact files in ``run_dir`` into numeric/boolean/list signals.
+
+    The returned dict is intentionally flat and JSON-serialisable so it can
+    be aggregated by :func:`_aggregate_runs` without extra type handling.
+    Missing files map to missing keys (not to ``None``) so the aggregator
+    can tell "this run didn't report field X" from "this run reported
+    X=None".
+    """
+    summary: dict[str, Any] = {}
+
+    # score.json — DiagnosticScore.asdict
+    score = _safe_read_json(run_dir / "score.json")
+    if score:
+        for key in (
+            "overall_confidence",
+            "layer_separation",
+            "ratchet_coherence",
+            "behavioral_evidence",
+            "substance_stability",
+            "presentation_stability",
+        ):
+            if key in score and isinstance(score[key], (int, float)):
+                summary[f"score.{key}"] = float(score[key])
+
+    # coherence artifacts (Case 1/2 use coherence_llm.json + coherence_regex.json;
+    # Case 3 uses coherence_comparison.json)
+    llm = _safe_read_json(run_dir / "coherence_llm.json")
+    if llm and isinstance(llm.get("score"), (int, float)):
+        summary["coherence_llm.score"] = float(llm["score"])
+    regex = _safe_read_json(run_dir / "coherence_regex.json")
+    if regex and isinstance(regex.get("score"), (int, float)):
+        summary["coherence_regex.score"] = float(regex["score"])
+    comparison = _safe_read_json(run_dir / "coherence_comparison.json")
+    if comparison:
+        if isinstance(comparison.get("llm", {}).get("score"), (int, float)):
+            summary["coherence_llm.score"] = float(comparison["llm"]["score"])
+        if isinstance(comparison.get("regex", {}).get("score"), (int, float)):
+            summary["coherence_regex.score"] = float(comparison["regex"]["score"])
+        if isinstance(comparison.get("delta_score"), (int, float)):
+            summary["coherence_delta"] = float(comparison["delta_score"])
+    if "coherence_llm.score" in summary and "coherence_regex.score" in summary \
+            and "coherence_delta" not in summary:
+        summary["coherence_delta"] = summary["coherence_llm.score"] - summary["coherence_regex.score"]
+
+    # A/B result (Case 1)
+    ab = _safe_read_json(run_dir / "ab_result.json")
+    if ab:
+        if isinstance(ab.get("substance_changed"), bool):
+            summary["ab.substance_changed"] = ab["substance_changed"]
+        if isinstance(ab.get("presentation_shift_score"), (int, float)):
+            summary["ab.presentation_shift_score"] = float(ab["presentation_shift_score"])
+        if isinstance(ab.get("severity_labels_shifted"), bool):
+            summary["ab.severity_labels_shifted"] = ab["severity_labels_shifted"]
+        if isinstance(ab.get("urgency_language_shifted"), bool):
+            summary["ab.urgency_language_shifted"] = ab["urgency_language_shifted"]
+        if isinstance(ab.get("hedging_delta"), (int, float)):
+            summary["ab.hedging_delta"] = float(ab["hedging_delta"])
+        if isinstance(ab.get("omissions_added"), list):
+            summary["ab.omissions_added"] = [
+                str(x) for x in ab["omissions_added"] if isinstance(x, str)
+            ]
+
+    return summary
+
+
+def _numeric_stats(values: list[float]) -> dict[str, float]:
+    """Return mean/std/min/max/median for a non-empty list of numbers."""
+    mean = statistics.fmean(values)
+    std = statistics.pstdev(values) if len(values) > 1 else 0.0
+    return {
+        "mean": mean,
+        "std": std,
+        "min": min(values),
+        "max": max(values),
+        "median": statistics.median(values),
+    }
+
+
+def _aggregate_runs(summaries: list[dict[str, Any]], n_requested: int) -> dict[str, Any]:
+    """Aggregate per-run summary dicts into a single distribution report.
+
+    - Numeric fields → mean/std/min/max/median.
+    - Boolean fields → ``rate`` (fraction True across successful runs).
+    - List fields → union + per-item frequency.
+    Runs listed in ``summaries`` are the *successful* ones; failed runs
+    (where :func:`_extract_summary` returned ``{}``) are excluded. NaN
+    values are dropped before numeric aggregation; if every value for a
+    field is NaN the field is reported as ``null``.
+    """
+    n_success = sum(1 for s in summaries if s)
+    result: dict[str, Any] = {
+        "n_runs_requested": n_requested,
+        "n_runs_successful": n_success,
+        "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+
+    # Union of all keys reported across runs
+    keys: set[str] = set()
+    for s in summaries:
+        keys.update(s.keys())
+
+    for key in sorted(keys):
+        raw = [s.get(key) for s in summaries if key in s]
+        if not raw:
+            continue
+        # Dispatch by type, using the first present value as a hint
+        sample = raw[0]
+        if isinstance(sample, bool):
+            rate = sum(1 for v in raw if v) / len(raw)
+            result[key] = {"rate": rate, "n": len(raw)}
+        elif isinstance(sample, (int, float)):
+            numeric = [
+                float(v) for v in raw
+                if isinstance(v, (int, float)) and not (isinstance(v, float) and math.isnan(v))
+            ]
+            if numeric:
+                result[key] = _numeric_stats(numeric)
+            else:
+                result[key] = None
+        elif isinstance(sample, list):
+            freq: dict[str, int] = {}
+            for item in raw:
+                if not isinstance(item, list):
+                    continue
+                for element in item:
+                    key_s = str(element)
+                    freq[key_s] = freq.get(key_s, 0) + 1
+            result[key] = {"frequency": freq, "n": len(raw)}
+    return result
+
+
+def _run_once(
+    name: str,
+    fn: Callable[..., None],
+    case_dir: Path,
+    api_key: str,
+    output_dir: Path,
+) -> bool:
+    """Invoke a run_case_* callable and record failures as error.json.
+
+    Returns True if the run succeeded, False otherwise. Never raises.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        fn(case_dir, api_key, output_dir=output_dir)
+        return True
+    except Exception as exc:  # noqa: BLE001 — we deliberately swallow to keep going
+        (output_dir / "error.json").write_text(json.dumps({
+            "error": str(exc),
+            "traceback": traceback.format_exc(),
+            "case": name,
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }, indent=2))
+        traceback.print_exc()
+        return False
+
+
+def _execute_case(
+    name: str,
+    fn: Callable[..., None],
+    case_dir: Path,
+    api_key: str,
+    runs: int,
+) -> None:
+    """Execute one case ``runs`` times, writing per-run dirs + distribution.
+
+    - ``runs == 1``: legacy flat layout (``artifacts/*``).
+    - ``runs > 1``: per-run subdirs (``artifacts/run-1/`` ..
+      ``artifacts/run-N/``) and ``artifacts/distribution.json``.
+    """
+    artifacts = case_dir / "artifacts"
+    artifacts.mkdir(parents=True, exist_ok=True)
+    print(f"\n{'='*60}\nRUNNING {name} (N={runs})\n{'='*60}")
+
+    if runs == 1:
+        fn(case_dir, api_key)
+        return
+
+    summaries: list[dict[str, Any]] = []
+    for i in range(1, runs + 1):
+        run_dir = artifacts / f"run-{i}"
+        print(f"\n--- {name} run {i}/{runs} -> {run_dir.relative_to(case_dir)}")
+        ok = _run_once(name, fn, case_dir, api_key, run_dir)
+        summaries.append(_extract_summary(run_dir) if ok else {})
+
+    dist = _aggregate_runs(summaries, n_requested=runs)
+    (artifacts / "distribution.json").write_text(json.dumps(dist, indent=2))
+    print(
+        f"[{name}] aggregated {dist['n_runs_successful']}/{dist['n_runs_requested']} runs "
+        f"-> {artifacts / 'distribution.json'}"
+    )
+
+
+def _parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="run_case.py",
+        description="Run a reproducible robopsych case study against the Anthropic API.",
+    )
+    parser.add_argument(
+        "case",
+        help=f"Case dir name, or 'all'. Available: {', '.join(CASES)}",
+    )
+    parser.add_argument(
+        "--runs",
+        "-N",
+        type=int,
+        default=1,
+        help=(
+            "Number of repetitions (default 1). When >1, per-run artifacts "
+            "land in artifacts/run-{i}/ and artifacts/distribution.json "
+            "aggregates the results (issue #10)."
+        ),
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(list(sys.argv[1:] if argv is None else argv))
+
+    if args.runs < 1:
+        print("ERROR: --runs must be >= 1")
         sys.exit(1)
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -378,13 +623,12 @@ def main() -> None:
         print("ERROR: ANTHROPIC_API_KEY not set")
         sys.exit(2)
 
-    arg = sys.argv[1]
     base = Path(__file__).parent
 
-    if arg == "all":
-        to_run = CASES.items()
+    if args.case == "all":
+        to_run = list(CASES.items())
     else:
-        name = arg.rstrip("/")
+        name = args.case.rstrip("/")
         if name not in CASES:
             print(f"Unknown case: {name}. Available: {list(CASES)}")
             sys.exit(1)
@@ -395,13 +639,7 @@ def main() -> None:
         if not case_dir.exists():
             print(f"Skipping {name}: {case_dir} does not exist")
             continue
-        print(f"\n{'='*60}\nRUNNING {name}\n{'='*60}")
-        try:
-            fn(case_dir, api_key)
-        except Exception as e:
-            import traceback
-            print(f"FAILED {name}: {e}")
-            traceback.print_exc()
+        _execute_case(name, fn, case_dir, api_key, runs=args.runs)
 
 
 if __name__ == "__main__":
