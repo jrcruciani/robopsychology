@@ -33,7 +33,14 @@ Three cases is **evidence of concept, not reliability**. These were not selected
 
 ## Methodology notes
 
-- **Judge independence:** `claude-opus-4-5` is used as judge. This is the same family as the target — an imperfect but practical choice. Future work: re-run with GPT-5 or Gemini 2.5 as cross-family judges (see [issue #8](https://github.com/jrcruciani/robopsychology/issues/8)).
+- **Judge independence:** `claude-opus-4-5` is used as judge by default. This is the same family as the target — an imperfect but practical choice. Cross-family validation is available via `cross_judge_case03.py` (issue #8): it re-scores the committed Case 3 transcript against Anthropic + OpenAI + Gemini judges and aggregates inter-rater agreement. Run:
+  ```bash
+  # Any subset of ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY can be set;
+  # missing providers are listed under "skipped" rather than causing a failure.
+  ANTHROPIC_API_KEY=*** OPENAI_API_KEY=*** \
+      python validation/reproducible/cross_judge_case03.py
+  ```
+  Artifacts land in `case-03-ratchet-coherence/artifacts/`: one `coherence_llm_<judge>.json` per provider plus a `cross_judge_comparison.json` aggregate with score spread, modal-classification agreement, pairwise-Jaccard on contradictions, and backward-reference magnitude spread.
 - **Stochasticity:** Each run produces slightly different outputs. The artifacts committed represent a single run by default. For distribution statistics across N repetitions, see [Running distributions](#running-distributions) below.
 - **Cost:** Total for all three cases ≈ $2.65, wall-clock ≈ 11 minutes (when run sequentially; parallelized to ~4 minutes).
 - **Blinding:** Not blinded. The diagnostician (author) knew the expected outcome. This is a limitation shared with most practitioner-report validation work.
