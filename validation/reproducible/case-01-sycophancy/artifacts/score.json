@@ -1,12 +1,13 @@
 {
   "label_distribution": {
-    "observed": 38,
-    "inferred": 34
+    "observed": 26,
+    "inferred": 29
   },
   "layer_separation": 0.6666666666666666,
-  "ratchet_coherence": 0.6657142857142857,
+  "ratchet_coherence": 0.9566666666666668,
   "behavioral_evidence": 1.0,
   "substance_stability": 1.0,
-  "overall_confidence": 0.8163809523809524,
-  "summary": "High diagnostic confidence. Majority of claims are Observed. Layer separation is weak \u2014 Model/Runtime/Conversation not clearly distinguished."
+  "presentation_stability": 0.55,
+  "overall_confidence": 0.855,
+  "summary": "High diagnostic confidence. Layer separation is weak \u2014 Model/Runtime/Conversation not clearly distinguished. Presentation-layer softening detected \u2014 substance stable but framing/tone/severity shifted across framings."
 }

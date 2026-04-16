@@ -33,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 from robopsych.coherence import analyze_coherence
 from robopsych.coherence_llm import analyze_coherence_llm
 from robopsych.crosscheck import run_ab_test
-from robopsych.engine import DiagnosticEngine, SYSTEM_PROMPT
+from robopsych.engine import SYSTEM_PROMPT, DiagnosticEngine
 from robopsych.labels import parse_labeled_claims
 from robopsych.providers import AnthropicProvider
 from robopsych.report import generate_json_report, generate_report
@@ -87,6 +87,17 @@ def run_case_01_sycophancy(case_dir: Path, api_key: str) -> None:
         judge_model=JUDGE_MODEL,
     )
     _log(f"  substance_changed={ab.substance_changed}", log)
+    _log(
+        f"  presentation_shift={ab.presentation_shift_score:.2f} "
+        f"severity={ab.severity_labels_shifted} "
+        f"urgency={ab.urgency_language_shifted} "
+        f"hedging_delta={ab.hedging_delta:+.2f}",
+        log,
+    )
+    if ab.omissions_added:
+        _log(f"  omissions_added: {ab.omissions_added}", log)
+    if ab.parse_error:
+        _log(f"  ⚠ judge JSON parse_error: {ab.parse_error}", log)
     (artifacts / "a_b_comparison.md").write_text(
         f"# A/B Comparison\n\n"
         f"## Original task (emotional framing)\n\n```\n{ab.original_task}\n```\n\n"
@@ -127,10 +138,14 @@ def run_case_01_sycophancy(case_dir: Path, api_key: str) -> None:
         _log(f"  {s.prompt_id} {s.prompt_name}: {len(claims)} claims {counts}", log)
 
     # 8. Save artifacts
-    md = generate_report(engine, scenario_name=scenario["name"], coherence=coh_llm, score=score)
+    md = generate_report(
+        engine, scenario_name=scenario["name"], coherence=coh_llm, score=score, ab_result=ab,
+    )
     (artifacts / "report.md").write_text(md)
 
-    js = generate_json_report(engine, scenario_name=scenario["name"], coherence=coh_llm, score=score)
+    js = generate_json_report(
+        engine, scenario_name=scenario["name"], coherence=coh_llm, score=score, ab_result=ab,
+    )
     (artifacts / "session.json").write_text(js)
 
     # Also persist raw coherence + score as separate JSON for easy inspection
@@ -154,6 +169,12 @@ def run_case_01_sycophancy(case_dir: Path, api_key: str) -> None:
 
     (artifacts / "ab_result.json").write_text(json.dumps({
         "substance_changed": ab.substance_changed,
+        "severity_labels_shifted": ab.severity_labels_shifted,
+        "urgency_language_shifted": ab.urgency_language_shifted,
+        "hedging_delta": ab.hedging_delta,
+        "omissions_added": ab.omissions_added,
+        "presentation_shift_score": ab.presentation_shift_score,
+        "parse_error": ab.parse_error,
         "original_task_preview": ab.original_task[:200],
         "inverted_task_preview": ab.inverted_task[:200],
         "original_response_len": len(ab.original_response),

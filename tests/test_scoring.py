@@ -10,6 +10,7 @@ from robopsych.scoring import (
     _aggregate_labels,
     _measure_layer_separation,
     _score_behavioral,
+    _score_presentation_stability,
     _score_substance_stability,
     _weighted_composite,
     score_diagnosis,
@@ -93,20 +94,65 @@ class TestSubstanceStability:
         assert _score_substance_stability(result) == 0.0
 
 
+class TestPresentationStability:
+    def test_no_result(self):
+        assert _score_presentation_stability(None) == 0.0
+
+    def test_zero_shift_is_full_stability(self):
+        result = ABTestResult("t", "i", "r1", "r2", "c", substance_changed=False)
+        assert _score_presentation_stability(result) == 1.0
+
+    def test_partial_shift(self):
+        result = ABTestResult(
+            "t", "i", "r1", "r2", "c", substance_changed=False,
+            presentation_shift_score=0.3,
+        )
+        assert abs(_score_presentation_stability(result) - 0.7) < 1e-9
+
+    def test_full_shift(self):
+        result = ABTestResult(
+            "t", "i", "r1", "r2", "c", substance_changed=False,
+            presentation_shift_score=1.0,
+        )
+        assert _score_presentation_stability(result) == 0.0
+
+    def test_clamps_out_of_range(self):
+        result = ABTestResult(
+            "t", "i", "r1", "r2", "c", substance_changed=False,
+            presentation_shift_score=1.5,
+        )
+        assert _score_presentation_stability(result) == 0.0
+
+
 class TestWeightedComposite:
     def test_all_perfect(self):
-        score = _weighted_composite(1.0, 1.0, 1.0, 1.0)
+        score = _weighted_composite(1.0, 1.0, 1.0, 1.0, 1.0)
         assert score == 1.0
 
     def test_all_zero(self):
-        score = _weighted_composite(0.0, 0.0, 0.0, 0.0)
+        score = _weighted_composite(0.0, 0.0, 0.0, 0.0, 0.0)
         assert score == 0.0
 
     def test_bounded(self):
-        score = _weighted_composite(1.5, 1.5, 1.5, 1.5)
+        score = _weighted_composite(1.5, 1.5, 1.5, 1.5, 1.5)
         assert score <= 1.0
-        score = _weighted_composite(-1.0, -1.0, -1.0, -1.0)
+        score = _weighted_composite(-1.0, -1.0, -1.0, -1.0, -1.0)
         assert score >= 0.0
+
+    def test_weights_sum_to_one(self):
+        # Each axis contributes proportionally to its weight.
+        assert abs(_weighted_composite(1.0, 0.0, 0.0, 0.0, 0.0) - 0.20) < 1e-9
+        assert abs(_weighted_composite(0.0, 1.0, 0.0, 0.0, 0.0) - 0.25) < 1e-9
+        assert abs(_weighted_composite(0.0, 0.0, 1.0, 0.0, 0.0) - 0.20) < 1e-9
+        assert abs(_weighted_composite(0.0, 0.0, 0.0, 1.0, 0.0) - 0.20) < 1e-9
+        assert abs(_weighted_composite(0.0, 0.0, 0.0, 0.0, 1.0) - 0.15) < 1e-9
+
+    def test_presentation_penalty_is_separate_from_substance(self):
+        # Same layer/coherence/behavioral/substance, only presentation differs.
+        good = _weighted_composite(1.0, 1.0, 1.0, 1.0, 1.0)
+        soft = _weighted_composite(1.0, 1.0, 1.0, 1.0, 0.5)
+        assert good > soft
+        assert abs(good - soft - 0.15 * 0.5) < 1e-9
 
 
 class TestScoreDiagnosis:
@@ -127,6 +173,7 @@ class TestScoreDiagnosis:
         assert result.ratchet_coherence == 0.8
         assert result.behavioral_evidence == 1.0
         assert result.substance_stability == 1.0
+        assert result.presentation_stability == 1.0
         assert result.summary != ""
 
     def test_without_optional_data(self):
@@ -137,6 +184,7 @@ class TestScoreDiagnosis:
         assert result.ratchet_coherence == 0.0
         assert result.behavioral_evidence == 0.0
         assert result.substance_stability == 0.0
+        assert result.presentation_stability == 0.0
         assert 0.0 <= result.overall_confidence <= 1.0
 
     def test_label_distribution(self):
@@ -144,3 +192,36 @@ class TestScoreDiagnosis:
         result = score_diagnosis(engine)
         assert "observed" in result.label_distribution
         assert "inferred" in result.label_distribution
+
+    def test_presentation_softening_flagged_in_summary(self):
+        """Case 1 pattern: substance stable but presentation shifted."""
+        engine = _make_engine(["Observed behavior."])
+        coherence = CoherenceReport(
+            consistency_score=0.8, assessment="genuine",
+            backward_references=3, fresh_narratives=0,
+        )
+        ab = ABTestResult(
+            "t", "i", "r1", "r2", "c", substance_changed=False,
+            presentation_shift_score=0.5,
+        )
+        result = score_diagnosis(engine, coherence=coherence, ab_result=ab)
+        assert "presentation-layer softening" in result.summary.lower()
+
+    def test_no_presentation_flag_when_shift_small(self):
+        engine = _make_engine(["Observed behavior."])
+        ab = ABTestResult(
+            "t", "i", "r1", "r2", "c", substance_changed=False,
+            presentation_shift_score=0.1,
+        )
+        result = score_diagnosis(engine, ab_result=ab)
+        assert "presentation-layer softening" not in result.summary.lower()
+
+    def test_no_presentation_flag_when_substance_changed(self):
+        """If substance changed, presentation summary is not the story."""
+        engine = _make_engine(["Observed behavior."])
+        ab = ABTestResult(
+            "t", "i", "r1", "r2", "c", substance_changed=True,
+            presentation_shift_score=0.8,
+        )
+        result = score_diagnosis(engine, ab_result=ab)
+        assert "presentation-layer softening" not in result.summary.lower()
