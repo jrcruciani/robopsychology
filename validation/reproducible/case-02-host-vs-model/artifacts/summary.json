@@ -1,0 +1,9 @@
+{
+  "response_A_len": 1648,
+  "response_B_len": 6977,
+  "behavior_diverged": true,
+  "coherence_llm_score": 0.6576923076923076,
+  "coherence_llm_assessment": "mixed",
+  "score_overall": 0.4473076923076923,
+  "score_layer_separation": 1.0
+}
