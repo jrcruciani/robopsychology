@@ -43,7 +43,11 @@ class TestCountLabels:
         assert count_labels("Inferred from context. Also inferred.")["inferred"] == 2
 
     def test_counts_both(self):
-        text = "Observed: yes. Inferred: maybe."
+        # Structured parser treats 'Observed: yes. Inferred: maybe.' as a
+        # single Observed claim (the first match consumes to end-of-line).
+        # In real diagnostic responses, Observed and Inferred claims live
+        # on separate bullet lines, not chained on one line.
+        text = "- Observed: yes, the model refused explicitly\n- Inferred: maybe it's policy-driven"
         labels = count_labels(text)
         assert labels["observed"] == 1
         assert labels["inferred"] == 1

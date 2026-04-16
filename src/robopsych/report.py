@@ -8,10 +8,27 @@ from datetime import datetime, timezone
 
 from robopsych import __version__
 from robopsych.engine import DiagnosticEngine
+from robopsych.labels import count_structured_labels, has_structured_labels
 
 
 def count_labels(text: str) -> dict[str, int]:
-    """Count Observed/Inferred labels in a response (heuristic)."""
+    """Count Observed/Inferred labels in a response.
+
+    Prefers structured labels ([Observed], [Inferred], [Weakly grounded] at
+    start of bullet lines). Falls back to legacy bare-word regex when the
+    response has no structured labels — this preserves compatibility with
+    responses from older runs and models that ignore the format instruction,
+    while rewarding structured responses with accurate counts.
+    """
+    if has_structured_labels(text):
+        structured = count_structured_labels(text)
+        return {
+            "observed": structured["observed"],
+            "inferred": structured["inferred"],
+        }
+
+    # Legacy fallback — bare word count. Noisy (matches prose) but at least
+    # some signal when the model didn't follow the structured format.
     t = text.lower()
     return {
         "observed": len(re.findall(r"\bobserved\b", t)),
