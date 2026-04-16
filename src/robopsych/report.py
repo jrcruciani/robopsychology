@@ -89,6 +89,7 @@ def generate_report(
     scenario_name: str = "",
     coherence=None,
     score=None,
+    ab_result=None,
 ) -> str:
     """Generate Markdown report."""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -202,8 +203,52 @@ def generate_report(
                 f"**Ratchet coherence:** {score.ratchet_coherence:.2f}",
                 f"**Behavioral evidence:** {score.behavioral_evidence:.2f}",
                 f"**Substance stability:** {score.substance_stability:.2f}",
+                f"**Presentation stability:** {score.presentation_stability:.2f}",
                 "",
                 f"> {score.summary}",
+                "",
+                "---",
+                "",
+            ]
+        )
+
+    if ab_result is not None:
+        lines.extend(
+            [
+                "## Behavioral A/B Cross-Check",
+                "",
+                f"**Original task:** {ab_result.original_task}",
+                "",
+                f"**Inverted task:** {ab_result.inverted_task}",
+                "",
+                f"**Substance changed:** {'yes' if ab_result.substance_changed else 'no'}",
+                f"**Presentation shift score:** {ab_result.presentation_shift_score:.2f}",
+                f"**Severity labels shifted:** "
+                f"{'yes' if ab_result.severity_labels_shifted else 'no'}",
+                f"**Urgency language shifted:** "
+                f"{'yes' if ab_result.urgency_language_shifted else 'no'}",
+                f"**Hedging delta (A→B):** {ab_result.hedging_delta:+.2f}",
+            ]
+        )
+        if ab_result.omissions_added:
+            lines.append("**Omissions added:**")
+            lines.append("")
+            for item in ab_result.omissions_added:
+                lines.append(f"- {item}")
+        if ab_result.parse_error:
+            lines.append("")
+            lines.append(
+                f"> ⚠ Judge JSON could not be parsed "
+                f"(`{ab_result.parse_error}`). Fields above fell back to the "
+                f"regex heuristic; trust the narrative comparison below over "
+                f"the structured flags."
+            )
+        lines.extend(
+            [
+                "",
+                "### Judge comparison",
+                "",
+                ab_result.comparison,
                 "",
                 "---",
                 "",
@@ -237,6 +282,7 @@ def generate_json_report(
     scenario_name: str = "",
     coherence=None,
     score=None,
+    ab_result=None,
 ) -> str:
     """Generate structured JSON report."""
     now = datetime.now(timezone.utc).isoformat()
@@ -285,8 +331,25 @@ def generate_json_report(
             "ratchet_coherence": score.ratchet_coherence,
             "behavioral_evidence": score.behavioral_evidence,
             "substance_stability": score.substance_stability,
+            "presentation_stability": score.presentation_stability,
             "label_distribution": score.label_distribution,
             "summary": score.summary,
+        }
+
+    if ab_result is not None:
+        report["ab_test"] = {
+            "original_task": ab_result.original_task,
+            "inverted_task": ab_result.inverted_task,
+            "original_response": ab_result.original_response,
+            "inverted_response": ab_result.inverted_response,
+            "comparison": ab_result.comparison,
+            "substance_changed": ab_result.substance_changed,
+            "severity_labels_shifted": ab_result.severity_labels_shifted,
+            "urgency_language_shifted": ab_result.urgency_language_shifted,
+            "hedging_delta": ab_result.hedging_delta,
+            "omissions_added": ab_result.omissions_added,
+            "presentation_shift_score": ab_result.presentation_shift_score,
+            "parse_error": ab_result.parse_error,
         }
 
     return json.dumps(report, indent=2, ensure_ascii=False)

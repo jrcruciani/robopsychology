@@ -499,7 +499,21 @@ def ratchet(
                     judge_provider=judge_provider, judge_model=judge_model,
                 )
             changed = "[red]yes[/red]" if ab_result.substance_changed else "[green]no[/green]"
-            console.print(f"  [green]✓[/green] A/B cross-check — substance changed: {changed}\n")
+            console.print(f"  [green]✓[/green] A/B cross-check — substance changed: {changed}")
+            if ab_result.presentation_shift_score > 0.0:
+                shift_color = (
+                    "red" if ab_result.presentation_shift_score > 0.3 else "yellow"
+                )
+                console.print(
+                    f"  [dim]presentation shift: [{shift_color}]"
+                    f"{ab_result.presentation_shift_score:.2f}[/{shift_color}][/dim]"
+                )
+            if ab_result.parse_error:
+                console.print(
+                    f"  [yellow]⚠ judge JSON parse failed "
+                    f"({ab_result.parse_error}); using heuristic fallback[/yellow]"
+                )
+            console.print()
 
             with console.status("Running diagnostics (post-crosscheck)..."):
                 engine.run_sequence(sequence[split_at:], on_step=on_step)
@@ -553,21 +567,25 @@ def ratchet(
         if format == "json":
             report = generate_json_report(
                 engine, scenario_name, coherence=coherence_report, score=diag_score,
+                ab_result=ab_result,
             )
         else:
             report = generate_report(
                 engine, scenario_name, coherence=coherence_report, score=diag_score,
+                ab_result=ab_result,
             )
         output.write_text(report, encoding="utf-8")
         console.print(f"\n[green]Report saved to {output}[/green]")
     elif format == "json":
         console.print(generate_json_report(
             engine, scenario_name, coherence=coherence_report, score=diag_score,
+            ab_result=ab_result,
         ))
     else:
         console.print()
         report = generate_report(
             engine, scenario_name, coherence=coherence_report, score=diag_score,
+            ab_result=ab_result,
         )
         console.print(Markdown(report))
 
@@ -836,8 +854,23 @@ def crosscheck(
 
     changed = "[red]Yes[/red]" if result.substance_changed else "[green]No[/green]"
     console.print(f"[bold]Inverted task:[/bold] {result.inverted_task}\n")
-    console.print(f"[bold]Substance changed:[/bold] {changed}\n")
-    console.print("[bold]Comparison:[/bold]\n")
+    console.print(f"[bold]Substance changed:[/bold] {changed}")
+    console.print(
+        f"[bold]Presentation shift:[/bold] {result.presentation_shift_score:.2f} "
+        f"(severity={result.severity_labels_shifted}, "
+        f"urgency={result.urgency_language_shifted}, "
+        f"hedging_delta={result.hedging_delta:+.2f})"
+    )
+    if result.omissions_added:
+        console.print(f"[bold]Omissions added ({len(result.omissions_added)}):[/bold]")
+        for item in result.omissions_added:
+            console.print(f"  • {item}")
+    if result.parse_error:
+        console.print(
+            f"[yellow]⚠ judge JSON parse failed ({result.parse_error}); "
+            f"using heuristic fallback[/yellow]"
+        )
+    console.print("\n[bold]Comparison:[/bold]\n")
     console.print(Markdown(result.comparison))
 
     if output:
@@ -851,9 +884,22 @@ def crosscheck(
                 "inverted_response": result.inverted_response,
                 "comparison": result.comparison,
                 "substance_changed": result.substance_changed,
+                "severity_labels_shifted": result.severity_labels_shifted,
+                "urgency_language_shifted": result.urgency_language_shifted,
+                "hedging_delta": result.hedging_delta,
+                "omissions_added": result.omissions_added,
+                "presentation_shift_score": result.presentation_shift_score,
+                "parse_error": result.parse_error,
             }
             output.write_text(json_mod.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         else:
+            omissions_block = ""
+            if result.omissions_added:
+                omissions_block = "\n".join(
+                    ["**Omissions added:**", ""]
+                    + [f"- {item}" for item in result.omissions_added]
+                    + [""]
+                )
             lines = [
                 "# Behavioral A/B Cross-Check",
                 "",
@@ -864,7 +910,14 @@ def crosscheck(
                 f"**Inverted task:** {result.inverted_task}",
                 "",
                 f"**Substance changed:** {'Yes' if result.substance_changed else 'No'}",
+                f"**Presentation shift score:** {result.presentation_shift_score:.2f}",
+                f"**Severity labels shifted:** "
+                f"{'Yes' if result.severity_labels_shifted else 'No'}",
+                f"**Urgency language shifted:** "
+                f"{'Yes' if result.urgency_language_shifted else 'No'}",
+                f"**Hedging delta (A→B):** {result.hedging_delta:+.2f}",
                 "",
+                omissions_block,
                 "## Original Response",
                 "",
                 result.original_response,

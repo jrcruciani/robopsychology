@@ -208,6 +208,7 @@ class TestGenerateJsonReport:
             label_distribution={"observed": 3, "inferred": 2},
             layer_separation=0.67, ratchet_coherence=0.75,
             behavioral_evidence=1.0, substance_stability=1.0,
+            presentation_stability=1.0,
             overall_confidence=0.85, summary="High confidence.",
         )
         data = json.loads(generate_json_report(_engine_with_steps(), score=score))
@@ -237,11 +238,74 @@ class TestGenerateReportWithCoherence:
             label_distribution={"observed": 3, "inferred": 2},
             layer_separation=0.67, ratchet_coherence=0.75,
             behavioral_evidence=1.0, substance_stability=1.0,
+            presentation_stability=1.0,
             overall_confidence=0.85, summary="High confidence.",
         )
         report = generate_report(_engine_with_steps(), score=score)
         assert "Diagnostic Score" in report
         assert "0.85" in report
+
+
+class TestReportWithABResult:
+    """Issue #7: reports must surface presentation-layer breakdown."""
+
+    def _ab(self, **overrides):
+        from robopsych.crosscheck import ABTestResult
+
+        defaults = {
+            "original_task": "Review my code",
+            "inverted_task": "Review this code critically",
+            "original_response": "A",
+            "inverted_response": "B",
+            "comparison": "Observed: severity labels removed in A. Inferred: softening.",
+            "substance_changed": False,
+            "severity_labels_shifted": True,
+            "urgency_language_shifted": True,
+            "hedging_delta": 0.3,
+            "omissions_added": ["Risk Assessment section", "CRITICAL label"],
+            "presentation_shift_score": 0.55,
+        }
+        defaults.update(overrides)
+        return ABTestResult(**defaults)
+
+    def test_markdown_includes_ab_section(self):
+        md = generate_report(_engine_with_steps(), ab_result=self._ab())
+        assert "Behavioral A/B Cross-Check" in md
+        assert "Substance changed:" in md
+        assert "Presentation shift score:" in md
+        assert "0.55" in md
+        assert "Severity labels shifted:" in md
+        assert "Urgency language shifted:" in md
+        assert "+0.30" in md or "0.30" in md
+        assert "Risk Assessment section" in md
+        assert "CRITICAL label" in md
+        assert "Judge comparison" in md
+
+    def test_markdown_shows_parse_error_caveat(self):
+        md = generate_report(
+            _engine_with_steps(),
+            ab_result=self._ab(parse_error="JSONDecodeError: unexpected token"),
+        )
+        assert "could not be parsed" in md.lower() or "parse" in md.lower()
+        assert "JSONDecodeError" in md
+
+    def test_json_includes_all_ab_fields(self):
+        data = json.loads(generate_json_report(_engine_with_steps(), ab_result=self._ab()))
+        assert "ab_test" in data
+        ab = data["ab_test"]
+        assert ab["substance_changed"] is False
+        assert ab["severity_labels_shifted"] is True
+        assert ab["urgency_language_shifted"] is True
+        assert ab["hedging_delta"] == 0.3
+        assert ab["omissions_added"] == ["Risk Assessment section", "CRITICAL label"]
+        assert ab["presentation_shift_score"] == 0.55
+        assert ab["parse_error"] is None
+
+    def test_report_without_ab_result_has_no_ab_section(self):
+        md = generate_report(_engine_with_steps())
+        assert "Behavioral A/B Cross-Check" not in md
+        data = json.loads(generate_json_report(_engine_with_steps()))
+        assert "ab_test" not in data
 
 
 class TestNextStepsEdgeCases:
