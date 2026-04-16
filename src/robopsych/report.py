@@ -142,6 +142,30 @@ def generate_report(
                 "",
             ]
         )
+        # LLM-judge report: surface which judge was used and show claim breakdown.
+        judge_model = getattr(coherence, "judge_model", "")
+        if judge_model:
+            lines.extend(
+                [
+                    f"**Analysis method:** LLM judge "
+                    f"(`{getattr(coherence, 'judge_provider_name', '?')}` / "
+                    f"`{judge_model}`)",
+                    "",
+                ]
+            )
+            claims = getattr(coherence, "claims", [])
+            if claims:
+                lines.append(f"**Claims extracted:** {len(claims)}")
+                lines.append("")
+            judge_errors = getattr(coherence, "judge_errors", [])
+            if judge_errors:
+                lines.append(f"**⚠ Judge errors:** {len(judge_errors)}")
+                for err in judge_errors[:3]:
+                    lines.append(f"- {err}")
+                lines.append("")
+        else:
+            lines.extend(["**Analysis method:** regex heuristics", ""])
+
         if coherence.contradictions:
             lines.append("**Contradictions found:**")
             lines.append("")

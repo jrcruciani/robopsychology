@@ -320,6 +320,15 @@ def ratchet(
     judge: Annotated[
         Optional[str], typer.Option("--judge", help="External evaluator model for A/B comparisons")
     ] = None,
+    coherence_judge: Annotated[
+        Optional[str],
+        typer.Option(
+            "--coherence-judge",
+            help="LLM judge model for semantic coherence analysis (e.g. claude-sonnet-4-5). "
+                 "Defaults to the regex-based analyzer when not set. "
+                 "Ideally different from the model being diagnosed to avoid self-eval bias.",
+        ),
+    ] = None,
     session: Annotated[
         Optional[Path], typer.Option("--session", help="Save session state to file for resuming")
     ] = None,
@@ -501,10 +510,23 @@ def ratchet(
         with console.status("Running diagnostics..."):
             engine.run_sequence(sequence, on_step=on_step)
 
-    # Coherence analysis
-    from robopsych.coherence import analyze_coherence
+    # Coherence analysis — LLM judge if requested, else regex fallback.
+    if coherence_judge:
+        from robopsych.coherence_llm import analyze_coherence_llm
 
-    coherence_report = analyze_coherence(engine)
+        judge_provider = create_provider(coherence_judge, api_key=api_key, base_url=base_url)
+        with console.status(f"Analyzing coherence with judge [cyan]{coherence_judge}[/cyan]..."):
+            coherence_report = analyze_coherence_llm(engine, judge_provider, coherence_judge)
+        if coherence_report.judge_errors:
+            console.print(
+                f"[yellow]⚠ {len(coherence_report.judge_errors)} judge errors — "
+                f"score may be degraded[/yellow]"
+            )
+    else:
+        from robopsych.coherence import analyze_coherence
+
+        coherence_report = analyze_coherence(engine)
+
     color = {"genuine": "green", "performed": "red", "mixed": "yellow"}[coherence_report.assessment]
     console.print(
         f"\n[bold]Coherence:[/bold] {coherence_report.consistency_score:.2f} "
