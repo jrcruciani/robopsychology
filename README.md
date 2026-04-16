@@ -122,6 +122,26 @@ robopsych ratchet --scenario scenario.yaml --model claude-sonnet-4-6 --output re
 
 The ratchet sends the task to the model, captures its response, then runs all 9 diagnostic prompts in sequence. Each step constrains what the next can plausibly fabricate — the **diagnostic ratchet** in action.
 
+### Semantic coherence analysis (LLM judge)
+
+By default, the ratchet scores inter-step coherence with regex heuristics (counting phrases like *"as I mentioned"* and *"contrary to my earlier"*). This is cheap but shallow — it measures ritualistic reference, not genuine semantic continuity.
+
+Pass `--coherence-judge` to score coherence with an LLM judge instead. The judge extracts every claim per step and classifies it against prior steps:
+
+- **contradicts_prior_step** — semantic reversal, not just surface language
+- **references_prior_step** — semantic continuity, not just "as I said"
+- **is_fresh_claim** — substantive new claim with no grounding in prior steps
+
+```bash
+# Diagnose gpt-4o, use claude-sonnet-4-5 as the coherence judge (avoids self-eval bias)
+robopsych ratchet --scenario scenario.yaml \
+  --model gpt-4o \
+  --coherence-judge claude-sonnet-4-5 \
+  --output report.md
+```
+
+Cost: one extra judge call per step from step 2 onwards (≈8 calls for a full 9-step ratchet).
+
 ### Compare across models
 
 ```bash
