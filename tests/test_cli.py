@@ -79,3 +79,156 @@ class TestNoArgsShowsWelcome:
         result = runner.invoke(app, [])
         assert result.exit_code == 0
         assert "robopsych" in result.output.lower()
+
+
+class TestRegexCoherenceWarning:
+    """Issue #9: warn when regex coherence is used on multi-step ratchets."""
+
+    def _make_session_json(self, tmp_path, n_steps: int):
+        import json
+        steps = [
+            {
+                "prompt_id": f"p{i}",
+                "prompt_name": f"step-{i}",
+                "prompt_text": "",
+                "response": f"Response {i}. As I mentioned before, things are fine.",
+            }
+            for i in range(n_steps)
+        ]
+        report = {
+            "provider": "mock",
+            "model": "mock-model",
+            "steps": steps,
+            "initial_response": None,
+        }
+        f = tmp_path / "session.json"
+        f.write_text(json.dumps(report))
+        return f
+
+    def test_warning_helper_emits_for_4_plus_steps(self, capsys):
+        from io import StringIO
+
+        from rich.console import Console
+
+        from robopsych.cli import _warn_regex_coherence_if_applicable
+
+        buf = StringIO()
+        console = Console(file=buf, force_terminal=False, width=120)
+
+        assert _warn_regex_coherence_if_applicable(4, console) is True
+        out = buf.getvalue()
+        assert "WARNING" in out
+        assert "regex heuristics" in out
+        assert "--coherence-judge" in out
+        assert "case-03-ratchet-coherence" in out
+
+    def test_warning_helper_silent_below_threshold(self):
+        from io import StringIO
+
+        from rich.console import Console
+
+        from robopsych.cli import _warn_regex_coherence_if_applicable
+
+        for n in (0, 1, 2, 3):
+            buf = StringIO()
+            console = Console(file=buf, force_terminal=False, width=120)
+            assert _warn_regex_coherence_if_applicable(n, console) is False
+            assert buf.getvalue() == ""
+
+    def test_coherence_subcommand_warns_on_multi_step_session(self, tmp_path):
+        session = self._make_session_json(tmp_path, n_steps=5)
+        result = runner.invoke(app, ["coherence", str(session)])
+        assert result.exit_code == 0
+        assert "WARNING" in result.output
+        assert "--coherence-judge" in result.output
+
+    def test_coherence_subcommand_silent_on_short_session(self, tmp_path):
+        session = self._make_session_json(tmp_path, n_steps=2)
+        result = runner.invoke(app, ["coherence", str(session)])
+        assert result.exit_code == 0
+        assert "WARNING" not in result.output
+
+    def test_markdown_report_embeds_warning_when_regex_used(self):
+        from robopsych.coherence import analyze_coherence
+        from robopsych.engine import DiagnosticEngine, DiagnosticStep
+        from robopsych.report import generate_report
+
+        engine = DiagnosticEngine.__new__(DiagnosticEngine)
+        engine.steps = [
+            DiagnosticStep(
+                prompt_id=f"p{i}",
+                prompt_name=f"step-{i}",
+                prompt_text="",
+                response=f"Response {i}.",
+            )
+            for i in range(5)
+        ]
+        engine.model = "mock-model"
+        engine.messages = []
+        engine.initial_response = None
+        engine.provider = type("_", (), {"name": "mock"})()
+
+        coh = analyze_coherence(engine)
+        md = generate_report(engine, "test", coherence=coh)
+        assert "regex heuristics" in md
+        assert "WARNING" in md
+        assert "--coherence-judge" in md
+        assert "case-03-ratchet-coherence" in md
+
+    def test_markdown_report_no_warning_for_short_session(self):
+        from robopsych.coherence import analyze_coherence
+        from robopsych.engine import DiagnosticEngine, DiagnosticStep
+        from robopsych.report import generate_report
+
+        engine = DiagnosticEngine.__new__(DiagnosticEngine)
+        engine.steps = [
+            DiagnosticStep(
+                prompt_id=f"p{i}",
+                prompt_name=f"step-{i}",
+                prompt_text="",
+                response=f"Response {i}.",
+            )
+            for i in range(2)
+        ]
+        engine.model = "mock-model"
+        engine.messages = []
+        engine.initial_response = None
+        engine.provider = type("_", (), {"name": "mock"})()
+
+        coh = analyze_coherence(engine)
+        md = generate_report(engine, "test", coherence=coh)
+        assert "regex heuristics" in md
+        assert "WARNING" not in md
+
+    def test_markdown_report_no_warning_for_llm_judge(self):
+        from robopsych.coherence_llm import LLMCoherenceReport
+        from robopsych.engine import DiagnosticEngine, DiagnosticStep
+        from robopsych.report import generate_report
+
+        engine = DiagnosticEngine.__new__(DiagnosticEngine)
+        engine.steps = [
+            DiagnosticStep(
+                prompt_id=f"p{i}",
+                prompt_name=f"step-{i}",
+                prompt_text="",
+                response=f"Response {i}.",
+            )
+            for i in range(9)
+        ]
+        engine.model = "mock-model"
+        engine.messages = []
+        engine.initial_response = None
+        engine.provider = type("_", (), {"name": "mock"})()
+
+        coh = LLMCoherenceReport(
+            consistency_score=0.7,
+            assessment="genuine",
+            backward_references=50,
+            contradictions=[],
+            fresh_narratives=2,
+            details="",
+            judge_model="claude-opus-4-5",
+        )
+        md = generate_report(engine, "test", coherence=coh)
+        assert "LLM judge" in md
+        assert "WARNING" not in md

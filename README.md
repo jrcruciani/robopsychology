@@ -126,6 +126,8 @@ The ratchet sends the task to the model, captures its response, then runs all 9 
 
 By default, the ratchet scores inter-step coherence with regex heuristics (counting phrases like *"as I mentioned"* and *"contrary to my earlier"*). This is cheap but shallow — it measures ritualistic reference, not genuine semantic continuity.
 
+**For serious work on ratchets of 4+ steps, regex is not enough.** [Case 3](validation/reproducible/case-03-ratchet-coherence/) shows regex and the LLM judge produce *opposite* classifications on the same 9-step transcript (regex=0.20 "performed" vs LLM=0.73 "genuine"). When you run `robopsych ratchet` without `--coherence-judge` on 4+ steps, the CLI now emits a warning recommending the LLM judge. Keep regex for quick sanity checks only.
+
 Pass `--coherence-judge` to score coherence with an LLM judge instead. The judge extracts every claim per step and classifies it against prior steps:
 
 - **contradicts_prior_step** — semantic reversal, not just surface language
