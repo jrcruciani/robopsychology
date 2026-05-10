@@ -239,6 +239,7 @@ This extends [POSIWID](https://en.wikipedia.org/wiki/The_purpose_of_a_system_is_
 | [`method.md`](method.md) | Decision flowchart, escalation paths, common misuses |
 | [`taxonomy.md`](taxonomy.md) | Observation → failure mode → prompt mapping |
 | [`related-work.md`](related-work.md) | How robopsychology relates to existing AI evaluation approaches |
+| [`deployment-contexts.md`](deployment-contexts.md) | When robopsychology is the right tool, when something else fits better, how to compose with evaluators and behavioral interventions |
 | [`validation/`](validation/) | Case studies with documented diagnostic outcomes |
 | [`examples/`](examples/) | Scenario files for ratchet testing |
 | [`src/robopsych/`](src/robopsych/) | CLI source code |

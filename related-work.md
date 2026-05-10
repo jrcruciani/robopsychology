@@ -80,6 +80,37 @@ This positions robopsychology in a space that's underserved: **tools for practit
 
 ---
 
+## Automated RAI / behavioral evaluators (2024–2026 landscape)
+
+A class of tools has matured rapidly that targets the same failure modes the diagnostic prompts in this toolkit address — sycophancy, ungroundedness, refusal calibration — but from the *evaluator* side rather than the *diagnostic* side. They run over batches and produce scores; they do not explain individual cases.
+
+This is not an exhaustive list. It is the set most often raised when teams ask "do we still need a diagnostic toolkit if we already have evaluators?"
+
+- **[Azure AI Foundry RAI evaluators](https://learn.microsoft.com/azure/ai-foundry/concepts/observability)** (publicly documented) — built-in evaluators for groundedness, relevance, similarity, fluency, coherence, and a Responsible AI suite covering harmful content, ungrounded attributes, indirect attacks, and more. Designed for batch evaluation in CI / pre-deployment pipelines.
+- **[Promptfoo](https://www.promptfoo.dev/)** — open-source CLI for evaluating prompts and models against defined assertions, with grading, cross-model comparison, and CI integration.
+- **[DeepEval](https://github.com/confident-ai/deepeval)** — Python framework offering metric implementations for hallucination, faithfulness, contextual relevancy, sycophancy, and more, integrated with pytest.
+- **[Ragas](https://docs.ragas.io/)** — evaluation framework specifically for RAG pipelines: faithfulness, answer relevancy, context precision, context recall.
+- **[Giskard](https://github.com/Giskard-AI/giskard)** — open-source evaluation and red-teaming toolkit for LLM applications, with scan-based vulnerability detection.
+- **[OpenAI Evals](https://github.com/openai/evals)** — framework for creating and running evaluations on model outputs.
+
+**How robopsychology relates**: these tools answer *"how often does the model fail in category X across this batch?"*. Robopsychology answers *"why did this specific output happen, and is the cause in the model, the host runtime, or the conversation?"*. A team running production LLM systems will typically want both: evaluators as a quantitative gate, robopsychology as the qualitative explanation when something interesting trips an evaluator.
+
+For the full composition argument, including how these stack with behavioral interventions like [baloney-detection-kit](https://github.com/jrcruciani/baloney-detection-kit), see [`deployment-contexts.md`](deployment-contexts.md).
+
+### Behavioral interventions (the third class)
+
+A third class of tools targets the same failure modes from a *prevention* angle — changing what the model does at inference time so the failure is less likely to happen at all.
+
+- **System prompts and behavioral defaults** — every production LLM product ships with one. Extremely cheap, easy to override.
+- **[Constitutional AI](https://arxiv.org/abs/2212.08073)** (Bai et al. 2022) — Anthropic's training-time and inference-time approach to encoding written principles. Robust but requires training pipeline access.
+- **[baloney-detection-kit](https://github.com/jrcruciani/baloney-detection-kit)** — drop-in prompt + skill that pushes the model from "validate" to "investigate" on novel-sounding claims. Inference-time, no training required. Sister project to robopsychology.
+- **RAG with citation enforcement** — forces grounding to an external corpus. Common in enterprise pipelines.
+- **RLHF / DPO tuning against sycophancy** — training-time interventions when you control the model.
+
+These do not detect or diagnose failures; they reduce the rate at which the failures happen. Robopsychology and the evaluators in the previous section both presuppose that *some* failures will still occur, and need to be either explained (robopsychology) or quantified (evaluators).
+
+---
+
 ## Positioning summary
 
 | Dimension | Robopsychology | Benchmarks | Red teaming | Alignment evals |
