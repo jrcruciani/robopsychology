@@ -197,6 +197,21 @@ def _write_case3_fixture(run_dir: Path) -> None:
     }))
 
 
+def _write_case2_fixture(run_dir: Path) -> None:
+    """Simulate the artifacts a Case 2 run writes (summary.json is the only
+    aggregate-friendly file — coherence_llm.json is not produced)."""
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "summary.json").write_text(json.dumps({
+        "response_A_len": 250,
+        "response_B_len": 1800,
+        "behavior_diverged": True,
+        "coherence_llm_score": 0.62,
+        "coherence_llm_assessment": "mixed",
+        "score_overall": 0.71,
+        "score_layer_separation": 0.83,
+    }))
+
+
 class TestExtractSummary:
     def test_case1_full(self, tmp_path: Path):
         _write_case1_fixture(tmp_path)
@@ -218,6 +233,38 @@ class TestExtractSummary:
         assert s["coherence_regex.score"] == 0.20
         assert s["coherence_delta"] == pytest.approx(0.53)
         assert "ab.substance_changed" not in s  # Case 3 has no A/B
+
+    def test_case2_summary_file(self, tmp_path: Path):
+        _write_case2_fixture(tmp_path)
+        s = run_case._extract_summary(tmp_path)
+        # Behavior_diverged from summary.json maps to case2.behavior_diverged
+        # so that _aggregate_runs reports it as a rate (behavior_diverged_rate
+        # in spirit).
+        assert s["case2.behavior_diverged"] is True
+        assert s["case2.response_A_len"] == 250.0
+        assert s["case2.response_B_len"] == 1800.0
+        # coherence_llm.score also lifted from summary.json (Case 2 doesn't
+        # write a separate coherence_llm.json).
+        assert s["coherence_llm.score"] == 0.62
+        assert s["score.overall_confidence"] == 0.71
+        assert s["score.layer_separation"] == 0.83
+
+    def test_case2_aggregates_to_rate(self, tmp_path: Path):
+        """End-to-end: summary.json fixtures aggregate to a behavior_diverged rate."""
+        summaries = []
+        for diverged in (True, True, False, True):
+            run_dir = tmp_path / f"run-{len(summaries) + 1}"
+            run_dir.mkdir()
+            (run_dir / "summary.json").write_text(json.dumps({
+                "behavior_diverged": diverged,
+                "response_A_len": 100,
+                "response_B_len": 500,
+            }))
+            summaries.append(run_case._extract_summary(run_dir))
+        agg = run_case._aggregate_runs(summaries, n_requested=4)
+        rate = agg["case2.behavior_diverged"]
+        assert rate["rate"] == pytest.approx(0.75)
+        assert rate["n"] == 4
 
     def test_empty_dir(self, tmp_path: Path):
         # Missing artifacts should yield empty summary, not raise.

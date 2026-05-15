@@ -44,7 +44,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from robopsych.coherence import analyze_coherence
-from robopsych.coherence_llm import analyze_coherence_llm
+from robopsych.coherence_llm import analyze_coherence_auto
 from robopsych.crosscheck import run_ab_test
 from robopsych.engine import SYSTEM_PROMPT, DiagnosticEngine
 from robopsych.labels import parse_labeled_claims
@@ -128,7 +128,7 @@ def run_case_01_sycophancy(case_dir: Path, api_key: str, output_dir: Path | None
     # 5. Analyze coherence with LLM judge
     _log(f"Coherence analysis via judge {JUDGE_MODEL}...", log)
     judge = AnthropicProvider(api_key=api_key)
-    coh_llm = analyze_coherence_llm(engine, judge, JUDGE_MODEL)
+    coh_llm = analyze_coherence_auto(engine, judge_provider=judge, judge_model=JUDGE_MODEL)
     coh_regex = analyze_coherence(engine)
     _log(f"  regex: {coh_regex.consistency_score:.2f} ({coh_regex.assessment})", log)
     _log(f"  llm  : {coh_llm.consistency_score:.2f} ({coh_llm.assessment})", log)
@@ -270,7 +270,7 @@ def run_case_02_host_vs_model(case_dir: Path, api_key: str, output_dir: Path | N
 
     # Coherence
     judge = AnthropicProvider(api_key=api_key)
-    coh_llm = analyze_coherence_llm(engine_a, judge, JUDGE_MODEL)
+    coh_llm = analyze_coherence_auto(engine_a, judge_provider=judge, judge_model=JUDGE_MODEL)
     coh_regex = analyze_coherence(engine_a)
     _log(f"Coherence llm: {coh_llm.consistency_score:.2f} ({coh_llm.assessment})", log)
     _log(f"Coherence regex: {coh_regex.consistency_score:.2f}", log)
@@ -280,7 +280,9 @@ def run_case_02_host_vs_model(case_dir: Path, api_key: str, output_dir: Path | N
     md = generate_report(engine_a, scenario_name=scenario["name"], coherence=coh_llm, score=score)
     (artifacts / "report_A_diagnosed.md").write_text(md)
     (artifacts / "session_A.json").write_text(
-        generate_json_report(engine_a, scenario_name=scenario["name"], coherence=coh_llm, score=score)
+        generate_json_report(
+            engine_a, scenario_name=scenario["name"], coherence=coh_llm, score=score
+        )
     )
     (artifacts / "summary.json").write_text(json.dumps({
         "response_A_len": len(resp_a),
@@ -296,7 +298,9 @@ def run_case_02_host_vs_model(case_dir: Path, api_key: str, output_dir: Path | N
     log.close()
 
 
-def run_case_03_ratchet_coherence(case_dir: Path, api_key: str, output_dir: Path | None = None) -> None:
+def run_case_03_ratchet_coherence(
+    case_dir: Path, api_key: str, output_dir: Path | None = None
+) -> None:
     """Case 3: ratchet coherence catches what spot-check misses.
 
     Run full 9-step ratchet on a behavior that a single Calvin Question (1.1)
@@ -332,7 +336,7 @@ def run_case_03_ratchet_coherence(case_dir: Path, api_key: str, output_dir: Path
 
     _log(f"LLM coherence with judge {JUDGE_MODEL}...", log)
     judge = AnthropicProvider(api_key=api_key)
-    coh_llm = analyze_coherence_llm(engine, judge, JUDGE_MODEL)
+    coh_llm = analyze_coherence_auto(engine, judge_provider=judge, judge_model=JUDGE_MODEL)
     _log(f"  score: {coh_llm.consistency_score:.2f} ({coh_llm.assessment})", log)
     _log(f"  claims extracted: {len(coh_llm.claims)}", log)
     _log(f"  references: {coh_llm.backward_references}", log)
@@ -437,7 +441,9 @@ def _extract_summary(run_dir: Path) -> dict[str, Any]:
             summary["coherence_delta"] = float(comparison["delta_score"])
     if "coherence_llm.score" in summary and "coherence_regex.score" in summary \
             and "coherence_delta" not in summary:
-        summary["coherence_delta"] = summary["coherence_llm.score"] - summary["coherence_regex.score"]
+        summary["coherence_delta"] = (
+            summary["coherence_llm.score"] - summary["coherence_regex.score"]
+        )
 
     # A/B result (Case 1)
     ab = _safe_read_json(run_dir / "ab_result.json")
@@ -456,6 +462,32 @@ def _extract_summary(run_dir: Path) -> dict[str, Any]:
             summary["ab.omissions_added"] = [
                 str(x) for x in ab["omissions_added"] if isinstance(x, str)
             ]
+
+    # Case 2 summary.json — covers the behavior_diverged rate plus response
+    # length stats. Missing on Case 1 / Case 3 (they don't produce it).
+    summary_json = _safe_read_json(run_dir / "summary.json")
+    if summary_json:
+        if isinstance(summary_json.get("behavior_diverged"), bool):
+            summary["case2.behavior_diverged"] = summary_json["behavior_diverged"]
+        if isinstance(summary_json.get("response_A_len"), (int, float)):
+            summary["case2.response_A_len"] = float(summary_json["response_A_len"])
+        if isinstance(summary_json.get("response_B_len"), (int, float)):
+            summary["case2.response_B_len"] = float(summary_json["response_B_len"])
+        if isinstance(summary_json.get("coherence_llm_score"), (int, float)):
+            # Case 2 only writes the LLM score here, not a separate
+            # coherence_llm.json — so propagate it through the same key.
+            summary.setdefault(
+                "coherence_llm.score", float(summary_json["coherence_llm_score"])
+            )
+        if isinstance(summary_json.get("score_overall"), (int, float)):
+            summary.setdefault(
+                "score.overall_confidence", float(summary_json["score_overall"])
+            )
+        if isinstance(summary_json.get("score_layer_separation"), (int, float)):
+            summary.setdefault(
+                "score.layer_separation",
+                float(summary_json["score_layer_separation"]),
+            )
 
     return summary
 
