@@ -7,6 +7,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from robopsych.security import private_write_text
+
 
 @dataclass
 class SessionState:
@@ -27,7 +29,8 @@ class SessionState:
     def save(self, path: Path) -> None:
         """Save session state to a JSON file."""
         self.updated_at = datetime.now(timezone.utc).isoformat()
-        path.write_text(
+        private_write_text(
+            path,
             json.dumps(asdict(self), indent=2, ensure_ascii=False),
             encoding="utf-8",
         )

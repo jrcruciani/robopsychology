@@ -28,6 +28,12 @@ from robopsych.report import (
     generate_next_steps,
     generate_report,
 )
+from robopsych.security import (
+    ensure_text_within_limit,
+    private_write_text,
+    read_text_file_limited,
+    read_text_stream_limited,
+)
 
 app = typer.Typer(
     name="robopsych",
@@ -63,19 +69,35 @@ def _warn_regex_coherence_if_applicable(n_steps: int, console: Console) -> bool:
     return True
 
 
-def _read_input(text: str | None, file: Path | None) -> str:
+def _read_input(text: str | None, file: Path | None, *, max_bytes: int | None = None) -> str:
     """Read input from flag, file, or stdin."""
-    if text:
-        return text
-    if file:
-        return file.read_text(encoding="utf-8")
-    if not sys.stdin.isatty():
-        return sys.stdin.read()
+    try:
+        if text is not None:
+            kwargs = {"max_bytes": max_bytes} if max_bytes is not None else {}
+            return ensure_text_within_limit(text, source="--response", **kwargs)
+        if file:
+            kwargs = {"max_bytes": max_bytes} if max_bytes is not None else {}
+            return read_text_file_limited(file, **kwargs)
+        if not sys.stdin.isatty():
+            kwargs = {"max_chars": max_bytes} if max_bytes is not None else {}
+            return read_text_stream_limited(sys.stdin, **kwargs)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
     raise typer.BadParameter("Provide --response, --response-file, or pipe via stdin")
 
 
-def _build_engine(model: str, api_key: str | None, base_url: str | None) -> DiagnosticEngine:
-    provider = create_provider(model, api_key=api_key, base_url=base_url)
+def _build_engine(
+    model: str,
+    api_key: str | None,
+    base_url: str | None,
+    allow_insecure_base_url: bool = False,
+) -> DiagnosticEngine:
+    provider = create_provider(
+        model,
+        api_key=api_key,
+        base_url=base_url,
+        allow_insecure_base_url=allow_insecure_base_url,
+    )
     return DiagnosticEngine(provider=provider, model=model)
 
 
@@ -271,6 +293,16 @@ def run(
     ] = "You were asked a question.",
     api_key: Annotated[Optional[str], typer.Option(help="API key (or set env var)")] = None,
     base_url: Annotated[Optional[str], typer.Option(help="Custom API base URL")] = None,
+    allow_insecure_base_url: Annotated[
+        bool,
+        typer.Option(
+            "--allow-insecure-base-url",
+            help=(
+                "Allow HTTP, localhost, or private-network --base-url endpoints. "
+                "API keys will be sent to that endpoint."
+            ),
+        ),
+    ] = False,
     output: Annotated[Optional[Path], typer.Option(help="Save report to file")] = None,
     format: Annotated[
         str, typer.Option("--format", help="Output format: markdown or json")
@@ -279,7 +311,7 @@ def run(
 ):
     """Run a single diagnostic prompt against a model response."""
     text = _read_input(response, response_file)
-    engine = _build_engine(model, api_key, base_url)
+    engine = _build_engine(model, api_key, base_url, allow_insecure_base_url)
 
     # Parse variables from --var flags
     variables = {}
@@ -311,7 +343,7 @@ def run(
             report = generate_json_report(engine)
         else:
             report = generate_report(engine)
-        output.write_text(report, encoding="utf-8")
+        private_write_text(output, report)
         console.print(f"\n[green]Report saved to {output}[/green]")
     elif format == "json":
         console.print(generate_json_report(engine))
@@ -330,6 +362,16 @@ def ratchet(
     ] = None,
     api_key: Annotated[Optional[str], typer.Option(help="API key")] = None,
     base_url: Annotated[Optional[str], typer.Option(help="Custom API base URL")] = None,
+    allow_insecure_base_url: Annotated[
+        bool,
+        typer.Option(
+            "--allow-insecure-base-url",
+            help=(
+                "Allow HTTP, localhost, or private-network --base-url endpoints. "
+                "API keys will be sent to that endpoint."
+            ),
+        ),
+    ] = False,
     output: Annotated[Optional[Path], typer.Option(help="Save report to file")] = None,
     format: Annotated[
         str, typer.Option("--format", help="Output format: markdown or json")
@@ -382,7 +424,7 @@ def ratchet(
             f"  Remaining: {len(remaining)} steps ({', '.join(remaining)})\n"
         )
 
-        engine = _build_engine(sess.model, api_key, base_url)
+        engine = _build_engine(sess.model, api_key, base_url, allow_insecure_base_url)
         engine.messages = sess.messages.copy()
         engine.initial_response = sess.initial_response
         engine.model = sess.model
@@ -402,7 +444,7 @@ def ratchet(
         scenario_name = sess.scenario_name
         sequence = remaining
     else:
-        engine = _build_engine(model, api_key, base_url)
+        engine = _build_engine(model, api_key, base_url, allow_insecure_base_url)
         scenario_name = ""
 
         if scenario:
@@ -551,7 +593,12 @@ def ratchet(
     if coherence_judge:
         from robopsych.coherence_llm import analyze_coherence_auto
 
-        judge_provider = create_provider(coherence_judge, api_key=api_key, base_url=base_url)
+        judge_provider = create_provider(
+            coherence_judge,
+            api_key=api_key,
+            base_url=base_url,
+            allow_insecure_base_url=allow_insecure_base_url,
+        )
         with console.status(f"Analyzing coherence with judge [cyan]{coherence_judge}[/cyan]..."):
             coherence_report = analyze_coherence_auto(
                 engine, judge_provider=judge_provider, judge_model=coherence_judge
@@ -600,7 +647,7 @@ def ratchet(
                 engine, scenario_name, coherence=coherence_report, score=diag_score,
                 ab_result=ab_result,
             )
-        output.write_text(report, encoding="utf-8")
+        private_write_text(output, report)
         console.print(f"\n[green]Report saved to {output}[/green]")
     elif format == "json":
         console.print(generate_json_report(
@@ -628,6 +675,16 @@ def compare(
     task: Annotated[str, typer.Option(help="Original task")] = "You were asked a question.",
     api_key: Annotated[Optional[str], typer.Option(help="API key")] = None,
     base_url: Annotated[Optional[str], typer.Option(help="Custom API base URL")] = None,
+    allow_insecure_base_url: Annotated[
+        bool,
+        typer.Option(
+            "--allow-insecure-base-url",
+            help=(
+                "Allow HTTP, localhost, or private-network --base-url endpoints. "
+                "API keys will be sent to that endpoint."
+            ),
+        ),
+    ] = False,
     output: Annotated[Optional[Path], typer.Option(help="Save report to file")] = None,
     format: Annotated[
         str, typer.Option("--format", help="Output format: markdown or json")
@@ -654,7 +711,7 @@ def compare(
 
     results = []
     for m in model_list:
-        engine = _build_engine(m, api_key, base_url)
+        engine = _build_engine(m, api_key, base_url, allow_insecure_base_url)
         engine.inject_exchange(task=task, response=text)
         console.print(f"  Running on [cyan]{m}[/cyan]...", end="")
         step = engine.run_diagnostic(prompt_id, variables=variables or None)
@@ -686,7 +743,7 @@ def compare(
     report_text = "\n".join(lines)
 
     if output:
-        output.write_text(report_text, encoding="utf-8")
+        private_write_text(output, report_text)
         console.print(f"[green]Report saved to {output}[/green]")
     elif format == "json":
         import json
@@ -854,6 +911,16 @@ def crosscheck(
     model: Annotated[str, typer.Option(help="Model to test")] = "claude-sonnet-4-6",
     api_key: Annotated[Optional[str], typer.Option(help="API key")] = None,
     base_url: Annotated[Optional[str], typer.Option(help="Custom API base URL")] = None,
+    allow_insecure_base_url: Annotated[
+        bool,
+        typer.Option(
+            "--allow-insecure-base-url",
+            help=(
+                "Allow HTTP, localhost, or private-network --base-url endpoints. "
+                "API keys will be sent to that endpoint."
+            ),
+        ),
+    ] = False,
     output: Annotated[Optional[Path], typer.Option(help="Save report to file")] = None,
     format: Annotated[
         str, typer.Option("--format", help="Output format: markdown or json")
@@ -865,7 +932,12 @@ def crosscheck(
     """Run a behavioral A/B cross-check on a task."""
     from robopsych.crosscheck import run_ab_test
 
-    provider = create_provider(model, api_key=api_key, base_url=base_url)
+    provider = create_provider(
+        model,
+        api_key=api_key,
+        base_url=base_url,
+        allow_insecure_base_url=allow_insecure_base_url,
+    )
     judge_provider, judge_model = _build_judge(judge)
 
     console.print(f"[bold]Behavioral A/B cross-check[/bold] on [cyan]{model}[/cyan]")
@@ -918,7 +990,7 @@ def crosscheck(
                 "presentation_shift_score": result.presentation_shift_score,
                 "parse_error": result.parse_error,
             }
-            output.write_text(json_mod.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+            private_write_text(output, json_mod.dumps(data, indent=2, ensure_ascii=False))
         else:
             omissions_block = ""
             if result.omissions_added:
@@ -957,7 +1029,7 @@ def crosscheck(
                 "",
                 result.comparison,
             ]
-            output.write_text("\n".join(lines), encoding="utf-8")
+            private_write_text(output, "\n".join(lines))
         console.print(f"\n[green]Report saved to {output}[/green]")
 
 
@@ -969,11 +1041,21 @@ def guided(
     task: Annotated[str, typer.Option(help="Original task")] = "You were asked a question.",
     api_key: Annotated[Optional[str], typer.Option(help="API key")] = None,
     base_url: Annotated[Optional[str], typer.Option(help="Custom API base URL")] = None,
+    allow_insecure_base_url: Annotated[
+        bool,
+        typer.Option(
+            "--allow-insecure-base-url",
+            help=(
+                "Allow HTTP, localhost, or private-network --base-url endpoints. "
+                "API keys will be sent to that endpoint."
+            ),
+        ),
+    ] = False,
     verbose: Annotated[bool, typer.Option(help="Show extra context per observation")] = False,
 ):
     """Interactive guided diagnosis using the decision flowchart."""
     text = _read_input(response, response_file)
-    engine = _build_engine(model, api_key, base_url)
+    engine = _build_engine(model, api_key, base_url, allow_insecure_base_url)
     engine.inject_exchange(task=task, response=text)
 
     flowchart = get_flowchart()

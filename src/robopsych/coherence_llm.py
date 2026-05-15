@@ -67,6 +67,7 @@ from typing import Any
 from robopsych.coherence import CoherenceReport, analyze_coherence
 from robopsych.engine import DiagnosticEngine
 from robopsych.providers import Provider, UnsupportedProviderOption
+from robopsych.security import safe_exception_message
 
 # --------------------------------------------------------------------------
 # Constants and defaults
@@ -648,7 +649,7 @@ def analyze_coherence_llm(
             all_claims.extend(step_claims)
             errors.extend(soft)
         except Exception as e:  # noqa: BLE001
-            errors.append(f"Step {i + 1} judge error: {type(e).__name__}: {e}")
+            errors.append(f"Step {i + 1} judge error: {safe_exception_message(e)}")
 
     score = _compute_llm_score(all_claims, total_steps=n, weights=weights)
     assessment = _classify(score)
@@ -694,8 +695,10 @@ def _coerce_model_config(
             Power-user shape: pass a pre-built SDK client. Currently
             supported for OpenAI-shaped clients only.
 
-        {"api_key": "...", "base_url": "...", "model": "..."}
-            OpenAI-compatible (incl. proxies / local servers).
+        {"api_key": "...", "base_url": "...", "model": "...",
+         "allow_insecure_base_url": false}
+            OpenAI-compatible (incl. proxies / local servers). Non-HTTPS,
+            localhost, and private-network base URLs require explicit opt-in.
 
         {"azure_endpoint": "...", "api_key": "...", "api_version": "...",
          "azure_deployment": "...", "model": "..."}
@@ -739,6 +742,7 @@ def _coerce_model_config(
             OpenAIProvider(
                 api_key=model_config["api_key"],
                 base_url=model_config.get("base_url"),
+                allow_insecure_base_url=model_config.get("allow_insecure_base_url"),
             ),
             model,
         )

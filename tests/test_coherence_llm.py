@@ -248,6 +248,18 @@ class TestAnalyzeCoherenceLLM:
         # Still returns a report, defaulted to neutral
         assert isinstance(report, LLMCoherenceReport)
 
+    def test_judge_error_redacts_secrets(self):
+        engine = _engine_with(["s1", "s2"])
+        judge = MagicMock()
+        judge.name = "flaky"
+        judge.send = MagicMock(
+            side_effect=RuntimeError("auth failed for sk-abcdefghijklmnopqrstuvwxyz")
+        )
+        report = analyze_coherence_llm(engine, judge, "judge-model")
+        assert len(report.judge_errors) == 1
+        assert "sk-abcdefghijklmnopqrstuvwxyz" not in report.judge_errors[0]
+        assert "REDACTED" in report.judge_errors[0]
+
     def test_skips_empty_step_response(self):
         engine = _engine_with(["s1", "", "s3"])
         judge = _mock_judge([
@@ -546,10 +558,21 @@ class TestModelConfigShapes:
         provider, model = _coerce_model_config({
             "api_key": "sk-test",
             "base_url": "http://localhost:8080",
+            "allow_insecure_base_url": True,
             "model": "local-model",
         })
         assert provider.name == "openai"
         assert model == "local-model"
+
+    def test_api_key_base_url_requires_opt_in_for_local_http(self):
+        from robopsych.coherence_llm import _coerce_model_config
+
+        with pytest.raises(ValueError, match="non-HTTPS"):
+            _coerce_model_config({
+                "api_key": "sk-test",
+                "base_url": "http://localhost:8080",
+                "model": "local-model",
+            })
 
     def test_missing_model_raises(self):
         from robopsych.coherence_llm import _coerce_model_config

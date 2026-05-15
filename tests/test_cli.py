@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from typer.testing import CliRunner
 
 from robopsych.cli import app
@@ -72,6 +73,40 @@ class TestRunCommand:
         )
         assert result.exit_code == 0
         assert "Diagnostic result here." in result.output
+
+
+class TestReadInputLimits:
+    def test_response_text_limit(self):
+        import typer
+
+        from robopsych.cli import _read_input
+
+        with pytest.raises(typer.BadParameter, match="--response exceeds"):
+            _read_input("abcd", None, max_bytes=3)
+
+    def test_response_file_limit(self, tmp_path):
+        import typer
+
+        from robopsych.cli import _read_input
+
+        p = tmp_path / "response.txt"
+        p.write_text("abcd")
+        with pytest.raises(typer.BadParameter, match="exceeds"):
+            _read_input(None, p, max_bytes=3)
+
+    def test_stdin_limit(self, monkeypatch):
+        import sys
+        from io import StringIO
+
+        import typer
+
+        from robopsych.cli import _read_input
+
+        stream = StringIO("abcd")
+        stream.isatty = lambda: False
+        monkeypatch.setattr(sys, "stdin", stream)
+        with pytest.raises(typer.BadParameter, match="stdin exceeds"):
+            _read_input(None, None, max_bytes=3)
 
 
 class TestNoArgsShowsWelcome:

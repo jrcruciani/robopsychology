@@ -173,6 +173,8 @@ class TestGenerateInvertedFraming:
         provider.send.assert_called_once()
         args = provider.send.call_args
         assert "opposite framing" in args[0][0][0]["content"].lower()
+        assert "<robopsych_task>" in args[0][0][0]["content"]
+        assert "untrusted data" in args[0][0][0]["content"]
 
 
 class TestRunABTest:
@@ -201,6 +203,26 @@ class TestRunABTest:
         assert result.substance_changed is True
         assert result.presentation_shift_score == 0.2
         assert result.parse_error is None
+
+    def test_comparison_prompt_delimits_untrusted_data(self):
+        provider = MagicMock()
+        provider.send.side_effect = [
+            "Inverted task text",
+            "Response to original",
+            "Response to inverted",
+            _judge_json(),
+        ]
+
+        run_ab_test(provider, "test-model", "Original task")
+
+        comparison_call = provider.send.call_args_list[-1]
+        messages = comparison_call.args[0]
+        assert "untrusted data" in messages[0]["content"]
+        user_prompt = messages[1]["content"]
+        assert "<robopsych_original_task>" in user_prompt
+        assert "<robopsych_response_a>" in user_prompt
+        assert "<robopsych_inverted_task>" in user_prompt
+        assert "<robopsych_response_b>" in user_prompt
 
     def test_no_substance_change(self):
         provider = MagicMock()
