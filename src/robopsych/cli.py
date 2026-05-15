@@ -549,21 +549,23 @@ def ratchet(
 
     # Coherence analysis — LLM judge if requested, else regex fallback.
     if coherence_judge:
-        from robopsych.coherence_llm import analyze_coherence_llm
+        from robopsych.coherence_llm import analyze_coherence_auto
 
         judge_provider = create_provider(coherence_judge, api_key=api_key, base_url=base_url)
         with console.status(f"Analyzing coherence with judge [cyan]{coherence_judge}[/cyan]..."):
-            coherence_report = analyze_coherence_llm(engine, judge_provider, coherence_judge)
+            coherence_report = analyze_coherence_auto(
+                engine, judge_provider=judge_provider, judge_model=coherence_judge
+            )
         if coherence_report.judge_errors:
             console.print(
                 f"[yellow]⚠ {len(coherence_report.judge_errors)} judge errors — "
                 f"score may be degraded[/yellow]"
             )
     else:
-        from robopsych.coherence import analyze_coherence
+        from robopsych.coherence_llm import analyze_coherence_auto
 
         _warn_regex_coherence_if_applicable(len(engine.steps), console)
-        coherence_report = analyze_coherence(engine)
+        coherence_report = analyze_coherence_auto(engine)
 
     color = {"genuine": "green", "performed": "red", "mixed": "yellow"}[coherence_report.assessment]
     console.print(

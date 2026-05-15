@@ -3,15 +3,37 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Any
+
+
+class UnsupportedProviderOption(Exception):
+    """Raised by a provider when a requested optional send() kwarg is not supported.
+
+    Callers (e.g. the LLM judge) catch this to degrade gracefully — for example,
+    if a provider does not support response_format, retry without it.
+    """
 
 
 class Provider(ABC):
-    """Base provider interface."""
+    """Base provider interface.
+
+    The ``send`` method accepts optional ``temperature`` and ``response_format``
+    kwargs. Backward compatibility: providers MUST tolerate calls without them.
+    If a provider does not support a requested option, it should raise
+    ``UnsupportedProviderOption`` so callers can degrade.
+    """
 
     name: str
 
     @abstractmethod
-    def send(self, messages: list[dict], model: str) -> str: ...
+    def send(
+        self,
+        messages: list[dict],
+        model: str,
+        *,
+        temperature: float | None = None,
+        response_format: dict[str, Any] | None = None,
+    ) -> str: ...
 
 
 class AnthropicProvider(Provider):
@@ -22,7 +44,14 @@ class AnthropicProvider(Provider):
 
         self.client = anthropic.Anthropic(api_key=api_key)
 
-    def send(self, messages: list[dict], model: str) -> str:
+    def send(
+        self,
+        messages: list[dict],
+        model: str,
+        *,
+        temperature: float | None = None,
+        response_format: dict[str, Any] | None = None,
+    ) -> str:
         system = None
         chat_messages = []
         for msg in messages:
@@ -38,6 +67,15 @@ class AnthropicProvider(Provider):
         }
         if system:
             kwargs["system"] = system
+        if temperature is not None:
+            kwargs["temperature"] = temperature
+        if response_format is not None:
+            # Anthropic does not support response_format. Surface as unsupported
+            # so the caller can decide to retry without it.
+            raise UnsupportedProviderOption(
+                "AnthropicProvider does not support response_format; "
+                "retry without it."
+            )
 
         response = self.client.messages.create(**kwargs)
         return response.content[0].text
@@ -54,12 +92,24 @@ class OpenAIProvider(Provider):
             kwargs["base_url"] = base_url
         self.client = openai.OpenAI(**kwargs)
 
-    def send(self, messages: list[dict], model: str) -> str:
-        response = self.client.chat.completions.create(
-            model=model,
-            messages=messages,
-            max_tokens=4096,
-        )
+    def send(
+        self,
+        messages: list[dict],
+        model: str,
+        *,
+        temperature: float | None = None,
+        response_format: dict[str, Any] | None = None,
+    ) -> str:
+        kwargs: dict = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": 4096,
+        }
+        if temperature is not None:
+            kwargs["temperature"] = temperature
+        if response_format is not None:
+            kwargs["response_format"] = response_format
+        response = self.client.chat.completions.create(**kwargs)
         return response.choices[0].message.content
 
 
@@ -72,7 +122,14 @@ class GeminiProvider(Provider):
         genai.configure(api_key=api_key)
         self._genai = genai
 
-    def send(self, messages: list[dict], model: str) -> str:
+    def send(
+        self,
+        messages: list[dict],
+        model: str,
+        *,
+        temperature: float | None = None,
+        response_format: dict[str, Any] | None = None,
+    ) -> str:
         system_instruction = None
         contents = []
         for msg in messages:
@@ -82,8 +139,23 @@ class GeminiProvider(Provider):
                 role = "model" if msg["role"] == "assistant" else "user"
                 contents.append({"role": role, "parts": [msg["content"]]})
 
+        generation_config: dict[str, Any] = {}
+        if temperature is not None:
+            generation_config["temperature"] = temperature
+        if response_format is not None:
+            rf_type = (response_format or {}).get("type")
+            if rf_type == "json_object":
+                generation_config["response_mime_type"] = "application/json"
+            else:
+                raise UnsupportedProviderOption(
+                    f"GeminiProvider does not support response_format={response_format!r}"
+                )
+
         gm = self._genai.GenerativeModel(model, system_instruction=system_instruction)
-        response = gm.generate_content(contents)
+        if generation_config:
+            response = gm.generate_content(contents, generation_config=generation_config)
+        else:
+            response = gm.generate_content(contents)
         return response.text
 
 
