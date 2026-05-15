@@ -5,6 +5,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
+from robopsych.security import validate_base_url
+
 
 class UnsupportedProviderOption(Exception):
     """Raised by a provider when a requested optional send() kwarg is not supported.
@@ -84,12 +86,21 @@ class AnthropicProvider(Provider):
 class OpenAIProvider(Provider):
     name = "openai"
 
-    def __init__(self, api_key: str, base_url: str | None = None):
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str | None = None,
+        *,
+        allow_insecure_base_url: bool | None = None,
+    ):
         import openai
 
         kwargs: dict = {"api_key": api_key}
         if base_url:
-            kwargs["base_url"] = base_url
+            kwargs["base_url"] = validate_base_url(
+                base_url,
+                allow_insecure=allow_insecure_base_url,
+            )
         self.client = openai.OpenAI(**kwargs)
 
     def send(
@@ -181,6 +192,8 @@ def create_provider(
     model: str,
     api_key: str | None = None,
     base_url: str | None = None,
+    *,
+    allow_insecure_base_url: bool = False,
 ) -> Provider:
     import os
 
@@ -201,4 +214,9 @@ def create_provider(
     key = api_key or os.environ.get("OPENAI_API_KEY")
     if not key:
         raise SystemExit("Set OPENAI_API_KEY or use --api-key")
-    return OpenAIProvider(api_key=key, base_url=base_url)
+    allow_insecure = True if allow_insecure_base_url else None
+    return OpenAIProvider(
+        api_key=key,
+        base_url=base_url,
+        allow_insecure_base_url=allow_insecure,
+    )

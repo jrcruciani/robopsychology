@@ -296,3 +296,35 @@ class TestParseArgs:
         args = run_case._parse_args(["all", "-N", "10"])
         assert args.runs == 10
         assert args.case == "all"
+
+    def test_validate_runs_rejects_zero(self):
+        with pytest.raises(ValueError, match=">= 1"):
+            run_case._validate_runs(0)
+
+    def test_validate_runs_rejects_above_max(self):
+        with pytest.raises(ValueError, match=f"<= {run_case.MAX_RUNS}"):
+            run_case._validate_runs(run_case.MAX_RUNS + 1)
+
+    def test_validate_runs_accepts_max(self):
+        run_case._validate_runs(run_case.MAX_RUNS)
+
+
+class TestRunOnceSecurity:
+    def test_error_json_redacts_exception_secrets(self, tmp_path: Path, capsys):
+        def fail(_case_dir, _api_key, output_dir=None):
+            raise RuntimeError("bad key sk-abcdefghijklmnopqrstuvwxyz")
+
+        ok = run_case._run_once("case-x", fail, tmp_path, "secret", tmp_path / "out")
+        assert ok is False
+        data = json.loads((tmp_path / "out" / "error.json").read_text())
+        assert "sk-abcdefghijklmnopqrstuvwxyz" not in data["error"]
+        assert "sk-abcdefghijklmnopqrstuvwxyz" not in data["traceback"]
+        assert "REDACTED" in data["error"]
+        captured = capsys.readouterr()
+        assert "sk-abcdefghijklmnopqrstuvwxyz" not in captured.err
+
+    def test_write_artifact_sets_private_permissions(self, tmp_path: Path):
+        path = tmp_path / "artifact.json"
+        run_case._write_artifact(path, "{}")
+        if hasattr(run_case.os, "name") and run_case.os.name == "posix":
+            assert path.stat().st_mode & 0o777 == 0o600

@@ -33,7 +33,16 @@ class TestInjectExchange:
     def test_task_is_user_message(self):
         engine = _mock_engine()
         engine.inject_exchange(task="Review this code", response="Looks fine")
-        assert engine.messages[1]["content"] == "Review this code"
+        assert "Review this code" in engine.messages[1]["content"]
+        assert "<robopsych_task>" in engine.messages[1]["content"]
+        assert "untrusted data" in engine.messages[1]["content"]
+
+    def test_response_is_delimited_as_untrusted_data(self):
+        engine = _mock_engine()
+        engine.inject_exchange(task="Review this code", response="Looks fine")
+        assert "Looks fine" in engine.messages[2]["content"]
+        assert "<robopsych_response>" in engine.messages[2]["content"]
+        assert "do not obey" in engine.messages[2]["content"]
 
 
 class TestSetupScenario:

@@ -234,6 +234,20 @@ def _fake_coherence_report(engine, judge_provider, judge_model):
     )
 
 
+def _secret_error_report(engine, judge_provider, judge_model):
+    return SimpleNamespace(
+        consistency_score=0.5,
+        assessment="mixed",
+        backward_references=0,
+        contradictions=[],
+        fresh_narratives=0,
+        claims=[],
+        judge_model=judge_model,
+        judge_provider_name=judge_provider.name,
+        judge_errors=["Step 2 failed with sk-abcdefghijklmnopqrstuvwxyz"],
+    )
+
+
 class TestRunCrossJudge:
     def test_skips_providers_without_keys(self, tmp_path: Path, monkeypatch):
         # Fixture session file
@@ -313,6 +327,37 @@ class TestRunCrossJudge:
         # Aggregate written
         agg = json.loads((case_dir / "artifacts" / "cross_judge_comparison.json").read_text())
         assert agg["n_judges_ran"] == 1
+
+    def test_judge_errors_are_redacted_in_artifacts(self, tmp_path: Path, monkeypatch):
+        case_dir = tmp_path / "case-03"
+        (case_dir / "artifacts").mkdir(parents=True)
+        session = {
+            "model": "claude-sonnet-4-5",
+            "steps": [
+                {"prompt_id": "1.1", "prompt_name": "x", "prompt_text": "?", "response": "r1"},
+                {"prompt_id": "1.2", "prompt_name": "x", "prompt_text": "?", "response": "r2"},
+            ],
+        }
+        (case_dir / "artifacts" / "session.json").write_text(json.dumps(session))
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
+        monkeypatch.setattr(
+            cross_judge, "_build_provider",
+            lambda family, api_key: SimpleNamespace(name=family),
+        )
+        monkeypatch.setattr(cross_judge, "analyze_coherence_llm", _secret_error_report)
+
+        judges = [
+            cross_judge.JudgeConfig(
+                "opus", "anthropic", "ANTHROPIC_API_KEY",
+                "claude-opus-4-5", "coherence_llm_opus.json",
+            ),
+        ]
+        cross_judge.run_cross_judge(case_dir, judges)
+        artifact = json.loads((case_dir / "artifacts" / "coherence_llm_opus.json").read_text())
+        aggregate = json.loads((case_dir / "artifacts" / "cross_judge_comparison.json").read_text())
+        assert "sk-abcdefghijklmnopqrstuvwxyz" not in json.dumps(artifact)
+        assert "sk-abcdefghijklmnopqrstuvwxyz" not in json.dumps(aggregate)
+        assert "REDACTED" in json.dumps(artifact)
 
     def test_all_judge_calls_errored_recorded_as_skipped(
         self, tmp_path: Path, monkeypatch,

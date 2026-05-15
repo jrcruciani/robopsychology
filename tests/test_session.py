@@ -1,6 +1,7 @@
 """Tests for session persistence."""
 
 import json
+import os
 
 import pytest
 
@@ -85,6 +86,8 @@ class TestSessionState:
         assert loaded.model == "claude-sonnet-4-6"
         assert loaded.remaining_steps == ["2.4"]
         assert len(loaded.messages) == 3
+        if os.name == "posix":
+            assert path.stat().st_mode & 0o777 == 0o600
 
     def test_save_updates_timestamp(self, tmp_path):
         path = tmp_path / "session.json"

@@ -9,6 +9,8 @@ build/
 
 # Generated reports (examples keep only the scenario YAML)
 examples/*-report.md
+validation/reproducible/**/artifacts/run-*/
+validation/reproducible/**/artifacts/**/error.json
 
 # IDE
 .vscode/

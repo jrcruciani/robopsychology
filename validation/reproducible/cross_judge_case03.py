@@ -54,6 +54,11 @@ from robopsych.providers import (  # noqa: E402
     OpenAIProvider,
     Provider,
 )
+from robopsych.security import (  # noqa: E402
+    private_write_text,
+    redact_secrets,
+    safe_exception_message,
+)
 
 CASE_DIR = Path(__file__).parent / "case-03-ratchet-coherence"
 
@@ -169,7 +174,7 @@ def coherence_report_to_json(
         "contradictions": report.contradictions,
         "fresh_narratives": report.fresh_narratives,
         "claims_count": len(report.claims),
-        "judge_errors": report.judge_errors,
+        "judge_errors": [redact_secrets(err, max_chars=2_000) for err in report.judge_errors],
     }
 
 
@@ -339,10 +344,11 @@ def run_cross_judge(
             provider = _build_provider(cfg.family, key_val)
             report = analyze_coherence_llm(engine, provider, cfg.default_model)
         except Exception as exc:  # noqa: BLE001
-            print(f"[{cfg.key}] FAILED: {type(exc).__name__}: {exc}")
+            safe_error = safe_exception_message(exc)
+            print(f"[{cfg.key}] FAILED: {safe_error}")
             outcomes.append(JudgeOutcome(
                 key=cfg.key, model=cfg.default_model, family=cfg.family,
-                ran=False, skip_reason=f"{type(exc).__name__}: {exc}",
+                ran=False, skip_reason=safe_error,
             ))
             continue
 
@@ -351,12 +357,12 @@ def run_cross_judge(
         # rather than a valid datapoint. An empty claims set is scored 0.5
         # by default which would silently pollute the cross-judge aggregate.
         if len(report.claims) == 0 and report.judge_errors:
-            first_error = report.judge_errors[0][:200]
+            first_error = redact_secrets(report.judge_errors[0], max_chars=200)
             print(
                 f"[{cfg.key}] all {len(report.judge_errors)} judge calls errored — "
                 f"recording as skipped. First error: {first_error}"
             )
-            (artifacts / cfg.artifact_filename).write_text(json.dumps(out, indent=2))
+            private_write_text(artifacts / cfg.artifact_filename, json.dumps(out, indent=2))
             outcomes.append(JudgeOutcome(
                 key=cfg.key, model=cfg.default_model, family=cfg.family,
                 ran=False,
@@ -367,7 +373,7 @@ def run_cross_judge(
             ))
             continue
 
-        (artifacts / cfg.artifact_filename).write_text(json.dumps(out, indent=2))
+        private_write_text(artifacts / cfg.artifact_filename, json.dumps(out, indent=2))
         print(
             f"[{cfg.key}] score={report.consistency_score:.2f} "
             f"({report.assessment}), refs={report.backward_references}, "
@@ -386,7 +392,10 @@ def run_cross_judge(
         ))
 
     report_dict = build_cross_judge_report(outcomes)
-    (artifacts / "cross_judge_comparison.json").write_text(json.dumps(report_dict, indent=2))
+    private_write_text(
+        artifacts / "cross_judge_comparison.json",
+        json.dumps(report_dict, indent=2),
+    )
     print(
         f"\nWrote {artifacts / 'cross_judge_comparison.json'} "
         f"({report_dict['n_judges_ran']}/{report_dict['n_judges_requested']} judges ran)"

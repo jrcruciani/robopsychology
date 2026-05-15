@@ -60,7 +60,29 @@ class TestCreateProvider:
             assert provider.name == "openai"
 
     def test_openai_with_base_url(self):
-        provider = create_provider("gpt-4o", api_key="test-key", base_url="http://localhost:8080")
+        provider = create_provider("gpt-4o", api_key="test-key", base_url="https://api.example.com/v1")
+        assert provider.name == "openai"
+
+    def test_openai_rejects_insecure_base_url_without_opt_in(self):
+        with pytest.raises(ValueError, match="non-HTTPS"):
+            create_provider("gpt-4o", api_key="test-key", base_url="http://localhost:8080")
+
+    def test_openai_allows_insecure_base_url_with_explicit_opt_in(self):
+        provider = create_provider(
+            "gpt-4o",
+            api_key="test-key",
+            base_url="http://localhost:8080",
+            allow_insecure_base_url=True,
+        )
+        assert provider.name == "openai"
+
+    def test_openai_allows_insecure_base_url_with_env_opt_in(self):
+        with patch.dict(os.environ, {"ROBOPSYCH_ALLOW_INSECURE_BASE_URL": "1"}):
+            provider = create_provider(
+                "gpt-4o",
+                api_key="test-key",
+                base_url="http://localhost:8080",
+            )
         assert provider.name == "openai"
 
     def test_openai_without_key_raises(self):

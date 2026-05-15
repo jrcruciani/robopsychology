@@ -69,11 +69,27 @@ export GEMINI_API_KEY="..."
 
 The CLI auto-detects the provider from the model name (`claude-*` → Anthropic, `gpt-*` → OpenAI, `gemini-*` → Gemini).
 
+Prefer environment variables over `--api-key`: command-line arguments can be
+stored in shell history or visible in process listings on some systems.
+
 **Local models via Ollama:**
 
 ```bash
-robopsych ratchet --model llama3 --base-url http://localhost:11434/v1 --api-key unused
+ROBOPSYCH_ALLOW_INSECURE_BASE_URL=1 \
+  robopsych ratchet --model llama3 \
+  --base-url http://localhost:11434/v1 \
+  --api-key unused
 ```
+
+Custom OpenAI-compatible endpoints receive the API key you provide. By default,
+`robopsych` requires HTTPS public endpoints; HTTP, localhost, and private-network
+endpoints require explicit opt-in with `ROBOPSYCH_ALLOW_INSECURE_BASE_URL=1` or
+`--allow-insecure-base-url`.
+
+Generated reports and session files can contain full prompts, model responses,
+and diagnostic transcripts. Treat them as sensitive unless you intend to publish
+them. Direct response input from files/stdin is capped at 10 MiB to avoid
+accidental memory exhaustion.
 
 ## Quick start
 
