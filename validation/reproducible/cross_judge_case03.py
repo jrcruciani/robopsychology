@@ -55,7 +55,6 @@ from robopsych.providers import (  # noqa: E402
     Provider,
 )
 
-
 CASE_DIR = Path(__file__).parent / "case-03-ratchet-coherence"
 
 
@@ -75,9 +74,18 @@ class JudgeConfig:
 
 
 DEFAULT_JUDGES: list[JudgeConfig] = [
-    JudgeConfig("opus", "anthropic", "ANTHROPIC_API_KEY", "claude-opus-4-5", "coherence_llm_opus.json"),
-    JudgeConfig("gpt5", "openai", "OPENAI_API_KEY", "gpt-5", "coherence_llm_gpt5.json"),
-    JudgeConfig("gemini", "gemini", "GOOGLE_API_KEY", "gemini-2.5-pro", "coherence_llm_gemini.json"),
+    JudgeConfig(
+        "opus", "anthropic", "ANTHROPIC_API_KEY",
+        "claude-opus-4-5", "coherence_llm_opus.json",
+    ),
+    JudgeConfig(
+        "gpt5", "openai", "OPENAI_API_KEY",
+        "gpt-5", "coherence_llm_gpt5.json",
+    ),
+    JudgeConfig(
+        "gemini", "gemini", "GOOGLE_API_KEY",
+        "gemini-2.5-pro", "coherence_llm_gemini.json",
+    ),
 ]
 
 
@@ -142,7 +150,9 @@ def load_engine_from_session(session_path: Path) -> DiagnosticEngine:
 # ---------------------------------------------------------------------------
 
 
-def coherence_report_to_json(report: LLMCoherenceReport, judge_key: str, judge_model: str) -> dict[str, Any]:
+def coherence_report_to_json(
+    report: LLMCoherenceReport, judge_key: str, judge_model: str
+) -> dict[str, Any]:
     """Flatten a LLMCoherenceReport into a JSON-serialisable dict.
 
     Kept in sync with the schema used by validation/reproducible/run_case.py
@@ -314,7 +324,8 @@ def run_cross_judge(
 
     outcomes: list[JudgeOutcome] = []
     for cfg in judges:
-        key_val = _resolve_env_key(cfg.env_var, "GEMINI_API_KEY" if cfg.family == "gemini" else None)
+        fallback = "GEMINI_API_KEY" if cfg.family == "gemini" else None
+        key_val = _resolve_env_key(cfg.env_var, fallback)
         if not key_val:
             print(f"[{cfg.key}] skipping — {cfg.env_var} not set")
             outcomes.append(JudgeOutcome(
@@ -340,15 +351,19 @@ def run_cross_judge(
         # rather than a valid datapoint. An empty claims set is scored 0.5
         # by default which would silently pollute the cross-judge aggregate.
         if len(report.claims) == 0 and report.judge_errors:
+            first_error = report.judge_errors[0][:200]
             print(
                 f"[{cfg.key}] all {len(report.judge_errors)} judge calls errored — "
-                f"recording as skipped. First error: {report.judge_errors[0][:200]}"
+                f"recording as skipped. First error: {first_error}"
             )
             (artifacts / cfg.artifact_filename).write_text(json.dumps(out, indent=2))
             outcomes.append(JudgeOutcome(
                 key=cfg.key, model=cfg.default_model, family=cfg.family,
                 ran=False,
-                skip_reason=f"all {len(report.judge_errors)} judge calls errored (first: {report.judge_errors[0][:200]})",
+                skip_reason=(
+                    f"all {len(report.judge_errors)} judge calls errored "
+                    f"(first: {first_error})"
+                ),
             ))
             continue
 
@@ -398,9 +413,18 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(list(sys.argv[1:] if argv is None else argv))
     judges = [
-        JudgeConfig("opus", "anthropic", "ANTHROPIC_API_KEY", args.anthropic_model, "coherence_llm_opus.json"),
-        JudgeConfig("gpt5", "openai", "OPENAI_API_KEY", args.openai_model, "coherence_llm_gpt5.json"),
-        JudgeConfig("gemini", "gemini", "GOOGLE_API_KEY", args.gemini_model, "coherence_llm_gemini.json"),
+        JudgeConfig(
+            "opus", "anthropic", "ANTHROPIC_API_KEY",
+            args.anthropic_model, "coherence_llm_opus.json",
+        ),
+        JudgeConfig(
+            "gpt5", "openai", "OPENAI_API_KEY",
+            args.openai_model, "coherence_llm_gpt5.json",
+        ),
+        JudgeConfig(
+            "gemini", "gemini", "GOOGLE_API_KEY",
+            args.gemini_model, "coherence_llm_gemini.json",
+        ),
     ]
     run_cross_judge(CASE_DIR, judges)
 
