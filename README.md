@@ -314,6 +314,11 @@ Cruciani, JR. (2025). Robopsychology: Diagnostic toolkit for AI behavior.
 https://github.com/jrcruciani/robopsychology
 ```
 
+A workshop preprint draft is in progress (see [`paper/`](paper/) and
+[issue #11](https://github.com/jrcruciani/robopsychology/issues/11)).
+The arXiv identifier will replace the URL above once the draft is
+submitted.
+
 ## License
 
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) — Use freely, attribute if you share.
