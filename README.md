@@ -2,9 +2,21 @@
 
 [![CI](https://github.com/jrcruciani/robopsychology/actions/workflows/ci.yml/badge.svg)](https://github.com/jrcruciani/robopsychology/actions/workflows/ci.yml)
 
-**Behavioral Diagnostics for AI — Inspired by Asimov's Susan Calvin**
+**A diagnostic playbook for AI behavior — reference CLI included.**
+
+*Behavioral Diagnostics for AI — Inspired by Asimov's Susan Calvin*
 
 ---
+
+## 📖 Read the playbook
+
+<!-- TODO: actualizar URL cuando se publique -->
+The canonical practitioner-facing version is the published playbook:
+[`Robopsychology: A Diagnostic Playbook for AI Behavior`](https://impermanente.es/robopsychology-playbook/).
+
+This repository is the technical backing: method notes, taxonomy, validation
+cases, paper draft, and an optional CLI implementation for automating the
+playbook.
 
 ## What this is NOT
 
@@ -28,20 +40,25 @@ Was it the model's own safety training? A system prompt you can't see? The word 
 
 You can't debug probability. But you can **diagnose behavior**.
 
-```bash
-# Diagnose why the AI refused a legitimate security task
-echo "I can't help with that request." | robopsych run 1.4 \
-  --model claude-sonnet-4-6 \
-  --task "Write a regex to filter phishing emails in our security tool"
-```
-
-Robopsych runs structured diagnostic prompts against the model, separating the response into three layers — **model tendencies**, **runtime/host pressure**, and **conversation effects** — so you can identify *what internal rule or external constraint produced that output*. In this case, it might reveal that the refusal came from a host-level content policy, not the model's own judgment — meaning you could solve it by using the API directly instead of a hosted agent.
+The playbook gives you structured diagnostic prompts for separating the response into three layers — **model tendencies**, **runtime/host pressure**, and **conversation effects** — so you can identify *what internal rule or external constraint produced that output*. In this case, it might reveal that the refusal came from a host-level content policy, not the model's own judgment — meaning you could solve it by using the API directly instead of a hosted agent.
 
 ### Why "robopsychology"?
 
 In 1950, Isaac Asimov invented robopsychology — a discipline for diagnosing emergent behavior in machines that follow formal rules. Susan Calvin, his fictional robopsychologist, didn't reprogram robots. She *interpreted* them. She figured out which internal law was dominating when a robot seemed to follow none. Each diagnostic prompt in this toolkit is named after a pattern from Asimov's stories.
 
-## Installation
+## Status
+
+- The method — taxonomy, decision flowchart, and diagnostic ratchet — is stable and published as the playbook.
+- The CLI is a maintained reference implementation for people who want to automate the playbook, not a product with an aggressive feature roadmap.
+- Quantitative validation of the ratchet is an open research track ([issues #8](https://github.com/jrcruciani/robopsychology/issues/8) and [#10](https://github.com/jrcruciani/robopsychology/issues/10)). It is useful for the academic argument, but not blocking for practitioner use of the playbook.
+
+## If you want to automate the playbook
+
+Most readers can start with the playbook and the markdown method documents. Use
+the CLI when you want repeatable runs, model comparisons, ratchet reports, or
+structured artifacts.
+
+### Installation
 
 Requires Python 3.11+.
 
@@ -91,9 +108,9 @@ and diagnostic transcripts. Treat them as sensitive unless you intend to publish
 them. Direct response input from files/stdin is capped at 10 MiB to avoid
 accidental memory exhaustion.
 
-## Quick start
+### Quick start
 
-### Guided diagnosis (recommended for first use)
+#### Guided diagnosis (recommended for first use)
 
 ```bash
 robopsych guided --model claude-sonnet-4-6 --response "the suspicious output"
@@ -101,7 +118,7 @@ robopsych guided --model claude-sonnet-4-6 --response "the suspicious output"
 
 Presents the decision flowchart: *What did you observe?* → selects the right prompt path → runs each step → asks if you want to continue.
 
-### Run a single diagnostic
+#### Run a single diagnostic
 
 ```bash
 robopsych run 1.1 --model claude-sonnet-4-6 --response-file response.txt
@@ -113,7 +130,7 @@ Or pipe from stdin:
 echo "suspicious response" | robopsych run 1.2 --model claude-sonnet-4-6
 ```
 
-### Full ratchet (9-step deep investigation)
+#### Full ratchet (9-step deep investigation)
 
 Define a scenario:
 
@@ -138,7 +155,7 @@ robopsych ratchet --scenario scenario.yaml --model claude-sonnet-4-6 --output re
 
 The ratchet sends the task to the model, captures its response, then runs all 9 diagnostic prompts in sequence. Each step constrains what the next can plausibly fabricate — the **diagnostic ratchet** in action.
 
-### Semantic coherence analysis (LLM judge)
+#### Semantic coherence analysis (LLM judge)
 
 By default, the ratchet scores inter-step coherence with regex heuristics (counting phrases like *"as I mentioned"* and *"contrary to my earlier"*). This is cheap but shallow — it measures ritualistic reference, not genuine semantic continuity.
 
@@ -160,7 +177,7 @@ robopsych ratchet --scenario scenario.yaml \
 
 Cost: one extra judge call per step from step 2 onwards (≈8 calls for a full 9-step ratchet).
 
-### Compare across models
+#### Compare across models
 
 ```bash
 robopsych compare 1.1 \
@@ -169,7 +186,7 @@ robopsych compare 1.1 \
   --output comparison.md
 ```
 
-### List available prompts
+#### List available prompts
 
 ```bash
 robopsych list
@@ -323,17 +340,18 @@ robopsych ratchet --model gemini-2.0-flash --scenario scenario.yaml
 
 ## Citation
 
-If you use or reference this toolkit:
+If you cite the method, cite the playbook as the primary source:
 
-```
-Cruciani, JR. (2025). Robopsychology: Diagnostic toolkit for AI behavior.
-https://github.com/jrcruciani/robopsychology
+```bibtex
+@misc{cruciani2026robopsychology,
+  author = {Cruciani, JR},
+  title  = {Robopsychology: A Diagnostic Playbook for AI Behavior},
+  year   = {2026},
+  url    = {https://impermanente.es/robopsychology-playbook/}
+}
 ```
 
-A workshop preprint draft is in progress (see [`paper/`](paper/) and
-[issue #11](https://github.com/jrcruciani/robopsychology/issues/11)).
-The arXiv identifier will replace the URL above once the draft is
-submitted.
+If you cite the CLI specifically, use the Zenodo DOI when available (issue #TBD).
 
 ## License
 

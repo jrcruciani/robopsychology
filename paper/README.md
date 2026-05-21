@@ -1,5 +1,11 @@
 # Workshop preprint draft
 
+> **Academic track — work in progress.** This is the formal write-up of the
+> method. The practitioner-facing version lives in
+> [the playbook](https://impermanente.es/robopsychology-playbook/). Validation
+> studies (Cohen's κ on ratchet coherence, judge agreement across model
+> families) are tracked in issues #8 and #10.
+
 This directory contains the LaTeX source for the robopsychology
 workshop preprint (repository issue
 [#11](https://github.com/jrcruciani/robopsychology/issues/11)).

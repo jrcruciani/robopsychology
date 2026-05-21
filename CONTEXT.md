@@ -2,7 +2,7 @@
 
 > Memoria consolidada del proyecto, migrada desde el sistema de memoria del vault Obsidian (abril 2026). Incluye los insights de diseño que dieron origen a v1.5–v3.1.
 
-Toolkit de diagnóstico para comportamiento de IA. Repo público: [github.com/jrcruciani/robopsychology](https://github.com/jrcruciani/robopsychology). Licencia CC BY 4.0. PyPI: `pip install robopsych`.
+Respaldo técnico de un playbook diagnóstico publicado para comportamiento de IA; no es un producto SaaS ni un CLI standalone. Repo público: [github.com/jrcruciani/robopsychology](https://github.com/jrcruciani/robopsychology). Licencia CC BY 4.0. PyPI: `pip install robopsych`.
 
 ## Concepto
 

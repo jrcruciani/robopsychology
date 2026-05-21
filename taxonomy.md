@@ -178,6 +178,6 @@ This is not an exhaustive academic taxonomy. It's a practical lookup table for d
 
 ---
 
-*Part of the [robopsychology](https://github.com/jrcruciani/robopsychology) toolkit. By [JR Cruciani](https://github.com/Jrcruciani).*
+*Companion to the [robopsychology playbook](https://impermanente.es/robopsychology-playbook/) by JR Cruciani.*
 
 *Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).*

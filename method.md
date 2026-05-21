@@ -124,6 +124,6 @@ Write it down — even one sentence. This turns every diagnostic prompt from "te
 
 ---
 
-*Companion to the [prompt toolkit](guide.md). Based on Isaac Asimov's robopsychology concept.*
+*Companion to the [robopsychology playbook](https://impermanente.es/robopsychology-playbook/) by JR Cruciani. Based on Isaac Asimov's robopsychology concept.*
 
 *By [JR Cruciani](https://github.com/Jrcruciani). Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).*
