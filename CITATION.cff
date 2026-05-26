@@ -18,8 +18,16 @@ authors:
 repository-code: "https://github.com/jrcruciani/robopsychology"
 url: "https://en.impermanente.es/essays/robopsychology/"
 license: CC-BY-4.0
-version: "5.0.0"
+version: "5.0.2"
 date-released: "2026-05-26"
+doi: "10.5281/zenodo.20396020"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.20396020"
+    description: "Concept DOI (always points to the latest version)."
+  - type: doi
+    value: "10.5281/zenodo.20396095"
+    description: "DOI for v5.0.2."
 keywords:
   - artificial intelligence
   - large language models
