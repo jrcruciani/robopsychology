@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/jrcruciani/robopsychology/actions/workflows/ci.yml/badge.svg)](https://github.com/jrcruciani/robopsychology/actions/workflows/ci.yml)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20396020.svg)](https://doi.org/10.5281/zenodo.20396020)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20396020-blue)](https://doi.org/10.5281/zenodo.20396020)
 
 **A framework for diagnosing AI behavior — method, taxonomy, ratchet, and a reference CLI.**
 
