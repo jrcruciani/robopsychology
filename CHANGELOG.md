@@ -8,8 +8,17 @@ implementation and tracks the framework, not the other way around.
 
 ## [Unreleased]
 
-- README now displays the Zenodo concept DOI badge (`10.5281/zenodo.20396020`).
-- `CITATION.cff` carries the concept and version DOIs.
+## [5.0.3] - 2026-05-26
+
+- Bump package version to 5.0.3 so the GitHub release can actually
+  publish to PyPI. Previous tags (v5.0.1, v5.0.2) failed with "File
+  already exists" because `pyproject.toml` still pointed at 5.0.0 and
+  the wheel/sdist filenames collided with the existing PyPI artifact.
+  No CLI behaviour change.
+- Swap the Zenodo DOI badge for a shields.io variant — the original
+  `zenodo.org/badge/DOI/...svg` endpoint returns `Cache-Control: no-cache`,
+  which GitHub's camo proxy handles poorly on first render (visible as a
+  "?" placeholder). shields.io renders identically and is cache-friendly.
 
 ## [5.0.2] - 2026-05-26
 
@@ -17,6 +26,8 @@ implementation and tracks the framework, not the other way around.
   `related_identifiers` (Zenodo expects an object, not a hyphenated
   string; the field is optional). No code changes — release exists to
   re-trigger the Zenodo deposit after v5.0.1's webhook returned HTTP 409.
+- README displays the Zenodo concept DOI badge (`10.5281/zenodo.20396020`).
+- `CITATION.cff` carries the concept and version DOIs.
 
 ## [5.0.1] - 2026-05-26
 
