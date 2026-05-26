@@ -46,7 +46,7 @@ In 1950, Isaac Asimov invented robopsychology — a discipline for diagnosing em
 
 - The method — taxonomy, decision flowchart, and diagnostic ratchet — is stable and published as the playbook.
 - The CLI is a maintained reference implementation for people who want to automate the playbook, not a product with an aggressive feature roadmap.
-- Quantitative validation of the ratchet is an open research track ([issues #8](https://github.com/jrcruciani/robopsychology/issues/8) and [#10](https://github.com/jrcruciani/robopsychology/issues/10)). It is useful for the academic argument, but not blocking for practitioner use of the playbook.
+- Quantitative validation of the ratchet is an active research track ([issues #8](https://github.com/jrcruciani/robopsychology/issues/8) and [#10](https://github.com/jrcruciani/robopsychology/issues/10)). The Azure Foundry paper workflow now has `N=5` distributions for Cases 1 and 2; Case 3 cross-judge validation is still in progress.
 
 ## If you want to automate the playbook
 
@@ -78,9 +78,17 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 export OPENAI_API_KEY="sk-..."
 # or
 export GEMINI_API_KEY="..."
+# or, for the paper validation workflow,
+export AZURE_FOUNDRY_API_KEY="..."
+export AZURE_FOUNDRY_ENDPOINT="https://<project>.services.ai.azure.com/api/projects/<project>"
+# Optional per-family overrides for Foundry-backed models
+export AZURE_FOUNDRY_CHAT_ENDPOINT="https://<chat-host>/models"
+export AZURE_FOUNDRY_GPT_ENDPOINT="https://<gpt-host>/openai"
 ```
 
-The CLI auto-detects the provider from the model name (`claude-*` → Anthropic, `gpt-*` → OpenAI, `gemini-*` → Gemini).
+The CLI auto-detects the provider from the model name (`claude-*` → Anthropic, `gpt-*` / `o1*` / `o3*` / `o4*` → OpenAI, `gemini-*` → Gemini, and `deepseek-*`, `mistral-*`, `azure/...` → Azure Foundry when the Foundry environment is configured).
+
+The reproducible validation scripts read `validation/reproducible/foundry_models.yaml` by default, so the paper workflow targets `deepseek-r1` and uses `gpt-5` plus `mistral-large` as cross judges. If your Azure Foundry deployment names differ from those aliases, set `target_deployment`, `judge_deployment`, and any per-judge `deployment` entries in that YAML file. In Azure, you can find the exact deployment names in **Azure AI Foundry → your project → Deployments** (or **Azure portal → Cognitive Services account → Deployments**).
 
 Prefer environment variables over `--api-key`: command-line arguments can be
 stored in shell history or visible in process listings on some systems.

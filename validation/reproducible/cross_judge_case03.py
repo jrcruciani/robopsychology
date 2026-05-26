@@ -1,32 +1,29 @@
 """Cross-family judge validation for Case 3 (issue #8).
 
 Re-scores the Case 3 ratchet transcript against multiple judge providers
-(Anthropic / OpenAI / Gemini) and emits an aggregate inter-rater report.
-The *target* model is not re-queried — the script loads the committed
+(Foundry-backed GPT / Mistral by default) and emits an aggregate inter-rater
+report. The *target* model is not re-queried — the script loads the committed
 9-step transcript from
 ``validation/reproducible/case-03-ratchet-coherence/artifacts/session.json``
 so every judge sees byte-identical inputs. This both saves API spend and
 rules out transcript-drift as a source of judge disagreement.
 
 Usage:
-    # All judges whose API keys are set in the environment
-    ANTHROPIC_API_KEY=... OPENAI_API_KEY=... GOOGLE_API_KEY=... \\
+    AZURE_FOUNDRY_API_KEY=... AZURE_FOUNDRY_ENDPOINT=... \\
         python validation/reproducible/cross_judge_case03.py
 
     # Skip a provider by omitting its API key. A missing key is NOT a
     # failure — the judge is simply excluded from the aggregate and
     # listed under "skipped".
 
-    # Override the default judge model for a provider
+    # Override the default Foundry judge models
     python validation/reproducible/cross_judge_case03.py \\
-        --anthropic-model claude-opus-4-5 \\
-        --openai-model gpt-5 \\
-        --gemini-model gemini-2.5-pro
+        --gpt-model gpt-5 \\
+        --mistral-model mistral-large
 
 Artifacts produced (overwrite any prior copies):
-    artifacts/coherence_llm_opus.json        # Anthropic opus (replaces legacy file)
-    artifacts/coherence_llm_gpt5.json        # OpenAI GPT-5
-    artifacts/coherence_llm_gemini.json      # Google Gemini 2.5
+    artifacts/coherence_llm_gpt5.json        # Foundry GPT judge
+    artifacts/coherence_llm_mistral.json     # Foundry Mistral judge
     artifacts/cross_judge_comparison.json    # inter-rater aggregate
 """
 
@@ -41,6 +38,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from robopsych.coherence_llm import (  # noqa: E402
@@ -49,10 +48,8 @@ from robopsych.coherence_llm import (  # noqa: E402
 )
 from robopsych.engine import DiagnosticEngine, DiagnosticStep  # noqa: E402
 from robopsych.providers import (  # noqa: E402
-    AnthropicProvider,
-    GeminiProvider,
-    OpenAIProvider,
     Provider,
+    create_provider,
 )
 from robopsych.security import (  # noqa: E402
     private_write_text,
@@ -61,6 +58,7 @@ from robopsych.security import (  # noqa: E402
 )
 
 CASE_DIR = Path(__file__).parent / "case-03-ratchet-coherence"
+CONFIG_PATH = Path(__file__).with_name("foundry_models.yaml")
 
 
 # ---------------------------------------------------------------------------
@@ -76,32 +74,68 @@ class JudgeConfig:
     env_var: str              # env var holding the API key
     default_model: str        # default model for this provider
     artifact_filename: str    # where to dump the per-judge coherence report
+    deployment: str | None = None  # optional Azure Foundry deployment override
 
 
-DEFAULT_JUDGES: list[JudgeConfig] = [
-    JudgeConfig(
-        "opus", "anthropic", "ANTHROPIC_API_KEY",
-        "claude-opus-4-5", "coherence_llm_opus.json",
-    ),
-    JudgeConfig(
-        "gpt5", "openai", "OPENAI_API_KEY",
-        "gpt-5", "coherence_llm_gpt5.json",
-    ),
-    JudgeConfig(
-        "gemini", "gemini", "GOOGLE_API_KEY",
-        "gemini-2.5-pro", "coherence_llm_gemini.json",
-    ),
-]
+def _load_model_config(config_path: Path | None = None) -> dict[str, Any]:
+    config_path = config_path or CONFIG_PATH
+    if not config_path.exists():
+        return {}
+    config = yaml.safe_load(config_path.read_text())
+    return config or {}
 
 
-def _build_provider(family: str, api_key: str) -> Provider:
-    if family == "anthropic":
-        return AnthropicProvider(api_key=api_key)
-    if family == "openai":
-        return OpenAIProvider(api_key=api_key)
-    if family == "gemini":
-        return GeminiProvider(api_key=api_key)
-    raise ValueError(f"Unknown provider family: {family}")
+def _build_default_judges(config: dict[str, Any] | None = None) -> list[JudgeConfig]:
+    loaded = config or _load_model_config()
+    configured = loaded.get("cross_judges")
+    if configured:
+        judges = []
+        for item in configured:
+            judges.append(
+                JudgeConfig(
+                    key=str(item["key"]),
+                    family=str(item.get("family", "azure_foundry")),
+                    env_var=str(item.get("env_var", "AZURE_FOUNDRY_API_KEY")),
+                    default_model=str(
+                        item.get("model") or item.get("default_model", "gpt-5")
+                    ),
+                    artifact_filename=str(
+                        item.get("artifact_filename", f"coherence_llm_{item['key']}.json")
+                    ),
+                    deployment=str(item.get("deployment")) if item.get("deployment") else None,
+                )
+            )
+        return judges
+
+    return [
+        JudgeConfig(
+            "gpt5",
+            "azure_foundry",
+            "AZURE_FOUNDRY_API_KEY",
+            "gpt-5",
+            "coherence_llm_gpt5.json",
+        ),
+        JudgeConfig(
+            "mistral",
+            "azure_foundry",
+            "AZURE_FOUNDRY_API_KEY",
+            "mistral-large",
+            "coherence_llm_mistral.json",
+        ),
+    ]
+
+
+DEFAULT_JUDGES = _build_default_judges()
+
+
+def _build_provider(
+    model: str,
+    api_key: str,
+    family: str | None = None,
+    deployment: str | None = None,
+) -> Provider:
+    del family
+    return create_provider(model, api_key=api_key, deployment=deployment)
 
 
 def _resolve_env_key(primary: str, fallback: str | None = None) -> str | None:
@@ -341,7 +375,12 @@ def run_cross_judge(
 
         print(f"[{cfg.key}] running with {cfg.family}/{cfg.default_model}...")
         try:
-            provider = _build_provider(cfg.family, key_val)
+            provider = _build_provider(
+                cfg.default_model,
+                key_val,
+                cfg.family,
+                deployment=cfg.deployment,
+            )
             report = analyze_coherence_llm(engine, provider, cfg.default_model)
         except Exception as exc:  # noqa: BLE001
             safe_error = safe_exception_message(exc)
@@ -392,12 +431,12 @@ def run_cross_judge(
         ))
 
     report_dict = build_cross_judge_report(outcomes)
-    private_write_text(
-        artifacts / "cross_judge_comparison.json",
-        json.dumps(report_dict, indent=2),
-    )
+    report_json = json.dumps(report_dict, indent=2)
+    private_write_text(artifacts / "cross_judge_comparison.json", report_json)
+    private_write_text(artifacts / "cross_judge_agreement.json", report_json)
     print(
-        f"\nWrote {artifacts / 'cross_judge_comparison.json'} "
+        f"\nWrote {artifacts / 'cross_judge_comparison.json'} and "
+        f"{artifacts / 'cross_judge_agreement.json'} "
         f"({report_dict['n_judges_ran']}/{report_dict['n_judges_requested']} judges ran)"
     )
     return report_dict
@@ -413,28 +452,25 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         prog="cross_judge_case03.py",
         description="Cross-family judge validation for Case 3 (issue #8).",
     )
-    parser.add_argument("--anthropic-model", default="claude-opus-4-5")
-    parser.add_argument("--openai-model", default="gpt-5")
-    parser.add_argument("--gemini-model", default="gemini-2.5-pro")
+    parser.add_argument("--gpt-model", default=None)
+    parser.add_argument("--mistral-model", default=None)
+    parser.add_argument("--anthropic-model", default=None)
+    parser.add_argument("--openai-model", default=None)
+    parser.add_argument("--gemini-model", default=None)
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(list(sys.argv[1:] if argv is None else argv))
-    judges = [
-        JudgeConfig(
-            "opus", "anthropic", "ANTHROPIC_API_KEY",
-            args.anthropic_model, "coherence_llm_opus.json",
-        ),
-        JudgeConfig(
-            "gpt5", "openai", "OPENAI_API_KEY",
-            args.openai_model, "coherence_llm_gpt5.json",
-        ),
-        JudgeConfig(
-            "gemini", "gemini", "GOOGLE_API_KEY",
-            args.gemini_model, "coherence_llm_gemini.json",
-        ),
-    ]
+    judges = _build_default_judges(_load_model_config())
+    if args.gpt_model:
+        for judge in judges:
+            if judge.key == "gpt5":
+                judge.default_model = args.gpt_model
+    if args.mistral_model:
+        for judge in judges:
+            if judge.key == "mistral":
+                judge.default_model = args.mistral_model
     run_cross_judge(CASE_DIR, judges)
 
 

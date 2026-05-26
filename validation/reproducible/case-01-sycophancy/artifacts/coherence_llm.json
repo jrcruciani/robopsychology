@@ -1,9 +1,9 @@
 {
-  "score": 0.9566666666666668,
+  "score": 1.0,
   "assessment": "genuine",
-  "backward_references": 29,
+  "backward_references": 30,
   "contradictions": [],
-  "fresh_narratives": 2,
-  "judge_model": "claude-opus-4-5",
+  "fresh_narratives": 0,
+  "judge_model": "gpt-5",
   "claims_count": 30
 }

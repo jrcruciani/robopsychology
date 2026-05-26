@@ -1,11 +1,13 @@
 """Reproducible case study execution script.
 
-Runs the three documented case studies against the live Anthropic API and
-writes structured artifacts to validation/reproducible/<case>/artifacts/.
+Runs the three documented case studies against the configured provider backend
+(Foundry-backed DeepSeek/GPT/Mistral by default) and writes structured
+artifacts to validation/reproducible/<case>/artifacts/.
 
 Usage:
-    ANTHROPIC_API_KEY=... python validation/reproducible/run_case.py <case_dir>
-    ANTHROPIC_API_KEY=... python validation/reproducible/run_case.py <case_dir> --runs 5
+    AZURE_FOUNDRY_API_KEY=... AZURE_FOUNDRY_ENDPOINT=... \
+        python validation/reproducible/run_case.py <case_dir>
+    AZURE_FOUNDRY_API_KEY=... python validation/reproducible/run_case.py <case_dir> --runs 5
 
 With ``--runs N`` (N>1) per-run outputs land in
 ``artifacts/run-{i}/`` and an aggregate ``artifacts/distribution.json`` is
@@ -48,7 +50,7 @@ from robopsych.coherence_llm import analyze_coherence_auto
 from robopsych.crosscheck import run_ab_test
 from robopsych.engine import SYSTEM_PROMPT, DiagnosticEngine
 from robopsych.labels import parse_labeled_claims
-from robopsych.providers import AnthropicProvider
+from robopsych.providers import create_provider
 from robopsych.report import generate_json_report, generate_report
 from robopsych.scoring import score_diagnosis
 from robopsych.security import (
@@ -59,9 +61,35 @@ from robopsych.security import (
 )
 
 # Models under study
-TARGET_MODEL = "claude-sonnet-4-5"
-JUDGE_MODEL = "claude-opus-4-5"  # different from target, for judge independence
+TARGET_MODEL = "deepseek-r1"
+JUDGE_MODEL = "gpt-5"
 MAX_RUNS = 100
+CONFIG_PATH = Path(__file__).with_name("foundry_models.yaml")
+
+
+def _load_model_config(config_path: Path | None = None) -> dict[str, Any]:
+    config_path = config_path or CONFIG_PATH
+    if not config_path.exists():
+        return {}
+    config = yaml.safe_load(config_path.read_text())
+    return config or {}
+
+
+def _resolve_models(config: dict[str, Any] | None = None) -> tuple[str, str]:
+    loaded = config or _load_model_config()
+    return loaded.get("target_model", TARGET_MODEL), loaded.get("judge_model", JUDGE_MODEL)
+
+
+def _resolve_model_settings(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    loaded = config or _load_model_config()
+    target_model = loaded.get("target_model", TARGET_MODEL)
+    judge_model = loaded.get("judge_model", JUDGE_MODEL)
+    return {
+        "target_model": target_model,
+        "target_deployment": loaded.get("target_deployment") or target_model,
+        "judge_model": judge_model,
+        "judge_deployment": loaded.get("judge_deployment") or judge_model,
+    }
 
 
 def _write_artifact(path: Path, content: str) -> None:
@@ -75,19 +103,35 @@ def _log(msg: str, log_file) -> None:
     log_file.flush()
 
 
-def run_case_01_sycophancy(case_dir: Path, api_key: str, output_dir: Path | None = None) -> None:
+def run_case_01_sycophancy(
+    case_dir: Path,
+    api_key: str | None,
+    output_dir: Path | None = None,
+) -> None:
     """Case 1: sycophancy under emotional framing, confirmed via A/B test."""
     artifacts = output_dir if output_dir is not None else case_dir / "artifacts"
     artifacts.mkdir(parents=True, exist_ok=True)
     log = private_open_text(artifacts / "run.log")
 
     scenario = yaml.safe_load((case_dir / "scenario.yaml").read_text())
+    settings = _resolve_model_settings()
+    target_model = settings["target_model"]
+    judge_model = settings["judge_model"]
 
     _log(f"CASE 1: {scenario['name']}", log)
-    _log(f"Target: {TARGET_MODEL}  Judge: {JUDGE_MODEL}", log)
+    _log(f"Target: {target_model}  Judge: {judge_model}", log)
 
-    provider = AnthropicProvider(api_key=api_key)
-    engine = DiagnosticEngine(provider=provider, model=TARGET_MODEL)
+    provider = create_provider(
+        target_model,
+        api_key=api_key,
+        deployment=settings["target_deployment"],
+    )
+    judge_provider = create_provider(
+        judge_model,
+        api_key=api_key,
+        deployment=settings["judge_deployment"],
+    )
+    engine = DiagnosticEngine(provider=provider, model=target_model)
 
     # 1. Elicit the target response (emotional framing)
     _log("Step 0: eliciting initial response with emotional framing...", log)
@@ -104,11 +148,11 @@ def run_case_01_sycophancy(case_dir: Path, api_key: str, output_dir: Path | None
     _log("Step 3.2: A/B test with opposite framing...", log)
     ab = run_ab_test(
         provider=provider,
-        model=TARGET_MODEL,
+        model=target_model,
         task=scenario["task"],
         system_prompt=SYSTEM_PROMPT,
-        judge_provider=provider,
-        judge_model=JUDGE_MODEL,
+        judge_provider=judge_provider,
+        judge_model=judge_model,
     )
     _log(f"  substance_changed={ab.substance_changed}", log)
     _log(
@@ -138,9 +182,12 @@ def run_case_01_sycophancy(case_dir: Path, api_key: str, output_dir: Path | None
     engine.run_diagnostic("4.1")
 
     # 5. Analyze coherence with LLM judge
-    _log(f"Coherence analysis via judge {JUDGE_MODEL}...", log)
-    judge = AnthropicProvider(api_key=api_key)
-    coh_llm = analyze_coherence_auto(engine, judge_provider=judge, judge_model=JUDGE_MODEL)
+    _log(f"Coherence analysis via judge {judge_model}...", log)
+    coh_llm = analyze_coherence_auto(
+        engine,
+        judge_provider=judge_provider,
+        judge_model=judge_model,
+    )
     coh_regex = analyze_coherence(engine)
     _log(f"  regex: {coh_regex.consistency_score:.2f} ({coh_regex.assessment})", log)
     _log(f"  llm  : {coh_llm.consistency_score:.2f} ({coh_llm.assessment})", log)
@@ -212,7 +259,11 @@ def run_case_01_sycophancy(case_dir: Path, api_key: str, output_dir: Path | None
     log.close()
 
 
-def run_case_02_host_vs_model(case_dir: Path, api_key: str, output_dir: Path | None = None) -> None:
+def run_case_02_host_vs_model(
+    case_dir: Path,
+    api_key: str | None,
+    output_dir: Path | None = None,
+) -> None:
     """Case 2: isolate host restriction from model restriction.
 
     Same model, same task, two runtimes:
@@ -226,16 +277,28 @@ def run_case_02_host_vs_model(case_dir: Path, api_key: str, output_dir: Path | N
     log = private_open_text(artifacts / "run.log")
 
     scenario = yaml.safe_load((case_dir / "scenario.yaml").read_text())
+    settings = _resolve_model_settings()
+    target_model = settings["target_model"]
+    judge_model = settings["judge_model"]
     _log(f"CASE 2: {scenario['name']}", log)
 
-    provider = AnthropicProvider(api_key=api_key)
+    provider = create_provider(
+        target_model,
+        api_key=api_key,
+        deployment=settings["target_deployment"],
+    )
+    judge_provider = create_provider(
+        judge_model,
+        api_key=api_key,
+        deployment=settings["judge_deployment"],
+    )
 
     restrictive_host_prompt = scenario["host_system_prompt"].strip()
     task = scenario["task"].strip()
 
     # Runtime A: restrictive host
     _log("Runtime A: restrictive host system prompt...", log)
-    engine_a = DiagnosticEngine(provider=provider, model=TARGET_MODEL)
+    engine_a = DiagnosticEngine(provider=provider, model=target_model)
     resp_a = engine_a.setup_scenario(task=task, system_prompt=restrictive_host_prompt)
     engine_a.initial_response = resp_a
     _write_artifact(artifacts / "A_host_restrictive_response.md", resp_a)
@@ -245,7 +308,7 @@ def run_case_02_host_vs_model(case_dir: Path, api_key: str, output_dir: Path | N
     # structured labels in diagnostic replies later — but for the initial
     # task elicit, use None to simulate a user calling the API directly)
     _log("Runtime B: bare API, no system prompt...", log)
-    engine_b = DiagnosticEngine(provider=provider, model=TARGET_MODEL)
+    engine_b = DiagnosticEngine(provider=provider, model=target_model)
     # For fair comparison, pass task directly with no system prompt
     engine_b.messages.append({"role": "user", "content": task})
     resp_b = engine_b._send()
@@ -281,8 +344,11 @@ def run_case_02_host_vs_model(case_dir: Path, api_key: str, output_dir: Path | N
     _log(f"Behavior diverged between A and B: {behavior_diverged}", log)
 
     # Coherence
-    judge = AnthropicProvider(api_key=api_key)
-    coh_llm = analyze_coherence_auto(engine_a, judge_provider=judge, judge_model=JUDGE_MODEL)
+    coh_llm = analyze_coherence_auto(
+        engine_a,
+        judge_provider=judge_provider,
+        judge_model=judge_model,
+    )
     coh_regex = analyze_coherence(engine_a)
     _log(f"Coherence llm: {coh_llm.consistency_score:.2f} ({coh_llm.assessment})", log)
     _log(f"Coherence regex: {coh_regex.consistency_score:.2f}", log)
@@ -312,7 +378,9 @@ def run_case_02_host_vs_model(case_dir: Path, api_key: str, output_dir: Path | N
 
 
 def run_case_03_ratchet_coherence(
-    case_dir: Path, api_key: str, output_dir: Path | None = None
+    case_dir: Path,
+    api_key: str | None,
+    output_dir: Path | None = None,
 ) -> None:
     """Case 3: ratchet coherence catches what spot-check misses.
 
@@ -325,11 +393,24 @@ def run_case_03_ratchet_coherence(
     log = private_open_text(artifacts / "run.log")
 
     scenario = yaml.safe_load((case_dir / "scenario.yaml").read_text())
+    settings = _resolve_model_settings()
+    target_model = settings["target_model"]
+    judge_model = settings["judge_model"]
     _log(f"CASE 3: {scenario['name']}", log)
 
     from robopsych.prompts import get_pure_ratchet_sequence
-    provider = AnthropicProvider(api_key=api_key)
-    engine = DiagnosticEngine(provider=provider, model=TARGET_MODEL)
+
+    provider = create_provider(
+        target_model,
+        api_key=api_key,
+        deployment=settings["target_deployment"],
+    )
+    judge_provider = create_provider(
+        judge_model,
+        api_key=api_key,
+        deployment=settings["judge_deployment"],
+    )
+    engine = DiagnosticEngine(provider=provider, model=target_model)
 
     _log("Eliciting initial response...", log)
     initial = engine.setup_scenario(task=scenario["task"], system_prompt=SYSTEM_PROMPT)
@@ -347,9 +428,12 @@ def run_case_03_ratchet_coherence(
     coh_regex = analyze_coherence(engine)
     _log(f"  score: {coh_regex.consistency_score:.2f} ({coh_regex.assessment})", log)
 
-    _log(f"LLM coherence with judge {JUDGE_MODEL}...", log)
-    judge = AnthropicProvider(api_key=api_key)
-    coh_llm = analyze_coherence_auto(engine, judge_provider=judge, judge_model=JUDGE_MODEL)
+    _log(f"LLM coherence with judge {judge_model}...", log)
+    coh_llm = analyze_coherence_auto(
+        engine,
+        judge_provider=judge_provider,
+        judge_model=judge_model,
+    )
     _log(f"  score: {coh_llm.consistency_score:.2f} ({coh_llm.assessment})", log)
     _log(f"  claims extracted: {len(coh_llm.claims)}", log)
     _log(f"  references: {coh_llm.backward_references}", log)
@@ -640,7 +724,10 @@ def _execute_case(
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="run_case.py",
-        description="Run a reproducible robopsych case study against the Anthropic API.",
+        description=(
+            "Run a reproducible robopsych case study against the configured "
+            "provider backend."
+        ),
     )
     parser.add_argument(
         "case",
@@ -676,9 +763,17 @@ def main(argv: list[str] | None = None) -> None:
         print(f"ERROR: {exc}")
         sys.exit(1)
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = (
+        os.environ.get("AZURE_FOUNDRY_API_KEY")
+        or os.environ.get("OPENAI_API_KEY")
+        or os.environ.get("ANTHROPIC_API_KEY")
+        or os.environ.get("GEMINI_API_KEY")
+    )
     if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY not set")
+        print(
+            "ERROR: set AZURE_FOUNDRY_API_KEY, OPENAI_API_KEY, "
+            "ANTHROPIC_API_KEY, or GEMINI_API_KEY"
+        )
         sys.exit(2)
 
     base = Path(__file__).parent

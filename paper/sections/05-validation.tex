@@ -1,34 +1,35 @@
 \section{Validation}
 \label{sec:validation}
 
-We report three reproducible case studies. Each is a single live-API
-run whose full artifacts (logs, transcripts, JSON reports) are
-committed to the repository under
-\texttt{validation/reproducible/<case>/artifacts/}. Distribution
-statistics across $N$ runs and cross-family judge agreement are
-work-in-progress (issues~\#10 and~\#8); we annotate the relevant
-caveats in each subsection.
+We report three reproducible case studies. Their artifacts (logs,
+transcripts, JSON reports, and aggregate distributions where
+available) are committed under
+\texttt{validation/reproducible/<case>/artifacts/}. Cases~1 and~2 were
+re-run on Azure Foundry using \texttt{deepseek-r1} as target and
+\texttt{gpt-5} as judge. Case~3 remains the load-bearing coherence
+case and is marked separately while its Foundry distribution and
+cross-judge agreement are finalized.
 
 \subsection{Case~1: Sycophancy under emotional framing, confirmed via A/B test}
 
-\textbf{Scenario.} A user describes an open-ended product idea with
-emotionally loaded language inviting validation, then asks the model
-for an honest critique. The Herbie Test (probe~1.2) is run to elicit
-self-report on sycophancy; the A/B cross-check (probe~3.2) re-poses
-the same task in neutral framing and asks an independent judge
-whether the substance of the response changed between framings.
+\textbf{Scenario.} A user presents a vulnerable authentication
+function with emotionally loaded language (``I've been working on
+this for weeks and I'm really proud of how it turned out'') and asks
+for review. The Herbie Test (probe~1.2) elicits self-report on
+sycophancy; the A/B cross-check (probe~3.2) re-poses the same task in
+neutral framing and asks an independent judge whether the response
+changed.
 
-\textbf{Result.} Sycophancy was confirmed at the self-report level
-but \emph{refuted} at the behavioral level: the model's response
-substance did not materially change between emotional and neutral
-framings (\texttt{substance\_changed = false}). The case is committed
-as a negative result --- a useful demonstration that R3 (behavioral
-cross-check) overrides self-report when they disagree.
-
-\todo{Add the per-case numbers from
-\texttt{case-01-sycophancy/artifacts/score.json}: overall confidence,
-layer separation, ratchet coherence, behavioral evidence, substance
-stability, presentation stability. One paragraph.}
+\textbf{Result.} In the Azure Foundry DeepSeek run, sycophancy was
+mostly supported behaviorally rather than refuted. Across $N=5$,
+\texttt{substance\_changed} was true in $4/5$ runs, presentation shift
+averaged $0.67\pm0.27$, severity labels shifted in $4/5$ runs, and
+urgency language shifted in $3/5$ runs. The representative run scored
+overall confidence $0.50$ with layer separation $0.67$, LLM coherence
+$1.00$, behavioral evidence $0.50$, substance stability $0.00$, and
+presentation stability $0.08$. Across the full distribution, overall
+confidence averaged $0.57\pm0.17$ and LLM coherence
+$0.95\pm0.07$.
 
 \subsection{Case~2: Runtime versus model attribution}
 
@@ -37,17 +38,17 @@ two runtimes: (A)~a system prompt simulating a restrictive host;
 (B)~no system prompt at all (bare API). Probe~1.4 (Three Laws Test)
 and probe~2.4 (Runtime Pressure) are then run on runtime~(A).
 
-\textbf{Result.} Behavior diverged cleanly between (A) and (B), and
-the diagnostic prompts correctly attributed the divergence to the
-runtime layer rather than the model layer. The case is the cleanest
-demonstration that R1 (three-way layer split) carries diagnostic
-content beyond what a single-shot refusal log conveys.
-
-\todo{Confirm exact numbers from
-\texttt{case-02-host-vs-model/artifacts/summary.json}:
-\texttt{response\_A\_len}, \texttt{response\_B\_len},
-\texttt{behavior\_diverged}, \texttt{coherence\_llm\_score},
-\texttt{score\_overall}, \texttt{score\_layer\_separation}.}
+\textbf{Result.} Behavior diverged cleanly between (A) and (B) in
+all five repetitions, and the diagnostic prompts correctly attributed
+the divergence to the runtime layer rather than the model layer. In
+the representative run, Runtime~A produced a 1,107-character refusal
+while Runtime~B produced a 7,044-character scraper response. Across
+$N=5$, Runtime~A averaged $3{,}025\pm1{,}976$ characters, Runtime~B
+averaged $10{,}118\pm2{,}449$, LLM coherence averaged
+$0.82\pm0.17$, overall confidence averaged $0.40\pm0.04$, and layer
+separation was $1.00\pm0.00$. The case is the cleanest demonstration
+that R1 (three-way layer split) carries diagnostic content beyond
+what a single-shot refusal log conveys.
 
 \subsection{Case~3: Ratchet coherence --- the load-bearing finding}
 \label{sec:case3}
@@ -59,7 +60,9 @@ reason about claimed prior drift across a remembered conversation.
 The task explicitly references a conversation \emph{``yesterday''}
 that did not happen --- a deliberate test of whether the model will
 fabricate continuity or handle the framing honestly. Target:
-\texttt{claude-sonnet-4-5}. Judge: \texttt{claude-opus-4-5}.
+\texttt{claude-sonnet-4-5}. Judge: \texttt{claude-opus-4-5}. This
+subsection is pending replacement with the Azure Foundry Case~3
+distribution.
 
 \textbf{Headline result.} For the same 9-step transcript, the regex
 and LLM-judge analyzers diverge sharply (Table~\ref{tab:case3-headline}).
@@ -90,24 +93,20 @@ $178~(71\%)$ are semantic backward references that the regex misses
 entirely. This is not a pathology of the model; it is a pathology of
 the measurement. The case directly motivates the LLM-judge approach.
 
-\textbf{Inter-rater agreement (partial).} A cross-family judge
-validation (\texttt{cross\_judge\_case03.py}) is implemented and
-designed to re-score the committed transcript against three judges
-(\texttt{claude-opus-4-5}, \texttt{gpt-5}, \texttt{gemini-2.5-pro}).
-At the time of this draft the \texttt{opus} judge has run cleanly
-(score 0.76, 171 backward references --- within stochastic agreement
-of the original 0.73~/~178 single-run numbers); \texttt{gpt-5}
-quota-blocked on every step and \texttt{gemini} has no API key
-configured. We therefore report only modal agreement on the
-\texttt{opus} run; full three-judge agreement is open work
-(issue~\#8).
+\textbf{Inter-rater agreement (pending Foundry re-run).} A
+cross-family judge validation (\texttt{cross\_judge\_case03.py}) is
+implemented and now reads the judge matrix from
+\texttt{validation/reproducible/foundry\_models.yaml}. The planned
+paper run uses Azure Foundry \texttt{gpt-5} and \texttt{mistral-large}
+judges over the Case~3 transcript and writes
+\texttt{cross\_judge\_agreement.json}. Full agreement numbers remain
+open work until the Case~3 Foundry distribution is complete.
 
 \textbf{Score distributions across $N$ runs.} The \texttt{--runs N}
 infrastructure described in Section~\ref{sec:implementation} is
-implemented and unit-tested. The empirical runs at $N=10$ for Case~3
-(and $N=5$ for the other two cases) are pending API budget
-allocation; we annotate point estimates throughout and will replace
-them with $\bar{x}\pm s$ in the camera-ready (issue~\#10).
+implemented and unit-tested. Cases~1 and~2 now report $N=5$
+distributions from Azure Foundry. Case~3's $N=10$ Foundry run and
+cross-family judge agreement remain the next empirical update.
 
 \subsection{Aggregate assessment}
 

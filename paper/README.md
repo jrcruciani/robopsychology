@@ -85,23 +85,22 @@ Swap `main.tex`'s preamble for the venue-specific style file
 
 Blocking work, in order of dependency:
 
-1. **Issue #10 (score distributions, $N$ runs).** Replace the
-   single-run point estimates in `sections/05-validation.tex` with
-   $\bar{x} \pm s$ over $N \geq 5$ runs per case (and $N=10$ for
-   Case~3). The infrastructure (`--runs N` flag, `distribution.json`
-   aggregation) is implemented; what's missing is the actual API
-   spend.
+1. **Issue #10 (score distributions, $N$ runs).** Cases 1 and 2 now
+   report Azure Foundry $N=5$ distributions in
+   `sections/05-validation.tex`. Case~3 still needs the planned
+   Foundry $N=10$ distribution before the validation section is fully
+   camera-ready.
 
 2. **Issue #8 (cross-family judges).** Re-run the Case~3 transcript
-   through GPT-5 and Gemini judges to get full three-judge agreement.
-   The script (`validation/reproducible/cross_judge_case03.py`) is in
-   place; opus has already run cleanly. GPT-5 and Gemini are blocked
-   on API access.
+   through the Azure Foundry judge matrix (`gpt-5` and
+   `mistral-large`) to get cross-family agreement. The script
+   (`validation/reproducible/cross_judge_case03.py`) is in place and
+   reads the deployments from `validation/reproducible/foundry_models.yaml`.
 
 Non-blocking work (`\todo{...}` in the source):
 
-3. Inline the final per-case numbers (overall confidence, ratchet
-   coherence, etc.) once the $N$-run aggregates are available.
+3. Inline the remaining Case~3 aggregate numbers once the $N=10$ run
+   is available.
 4. Add the architecture diagram figure to `figures/architecture.pdf`.
 5. Inline the verbatim YAML prompt text for the four key probes in
    appendix A.

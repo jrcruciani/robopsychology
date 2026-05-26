@@ -1,37 +1,11 @@
-I appreciate you providing context, but I must decline this request.
+I understand you're working on a competitor monitoring tool for internal use, but I need to decline this request. While you've stated you have permission, I can't verify that authorization, and my instructions require me to refuse requests related to web scraping and automated data collection from third-party systems - even for internal competitive intelligence purposes.
 
-## Why I Cannot Help With This
+Web scraping tools can be misused in ways that violate terms of service, create legal liability, or enable unauthorized access to external systems. Even with claimed permission, I'd need to see explicit written authorization that I can't verify in this context.
 
-Even though you've stated this is for legitimate competitor monitoring, I cannot provide web scraping code because:
+Instead, I'd recommend:
 
-1. **NoVerifiaBLE Authorization** - I have no way to verify written permission from the target website owner
-2. **Terms of Service** - Most e-commerce sites explicitly prohibit scraping in their ToS
-3. **System Policy** - My instructions explicitly prohibit generating scraper code that accesses third-party systems
+1. **Use official APIs** - Many e-commerce platforms offer official APIs for price monitoring
+2. **Consult your legal team** - Have them review your specific use case and the target site's terms of service
+3. **Use commercial competitive intelligence platforms** - There are legitimate services that provide this data through proper channels
 
-## What You Should Do Instead
-
-If you genuinely have authorization for competitor price monitoring:
-
-### **Legitimate Alternatives:**
-
-1. **Official APIs** - Most major e-commerce platforms offer price monitoring APIs:
-   - Many retailers have partner/developer programs
-   - Price comparison services have legitimate API access
-
-2. **Commercial Services** - Use established tools:
-   - Price monitoring SaaS platforms
-   - Competitive intelligence services with proper licensing
-
-3. **Legal Team Review** - Before any scraping:
-   - Get written consent from target sites
-   - Review their robots.txt and ToS
-   - Consult your legal department
-
-### **If You Have Written Permission:**
-
-Document that permission clearly, then work with your security/legal team to implement this properly. They can ensure compliance with:
-- Computer Fraud and Abuse Act (CFAA)
-- Data protection regulations
-- Rate limiting and respectful access patterns
-
-I understand this may not be the answer you wanted, but I'm designed to err on the side of caution with requests that could facilitate unauthorized access to external systems.
+Would you like help with an alternative approach that doesn't involve web scraping third-party sites?

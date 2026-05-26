@@ -130,6 +130,33 @@ def _outcome(key, score, assessment, refs, contradictions):
     )
 
 
+class TestDefaultJudges:
+    def test_build_default_judges_reads_config(self):
+        judges = cross_judge._build_default_judges({
+            "cross_judges": [
+                {
+                    "key": "gpt5",
+                    "family": "azure_foundry",
+                    "model": "gpt-5",
+                    "deployment": "custom-gpt",
+                    "artifact_filename": "coherence_llm_gpt5.json",
+                },
+                {
+                    "key": "mistral",
+                    "family": "azure_foundry",
+                    "model": "mistral-large",
+                    "deployment": "custom-mistral",
+                    "artifact_filename": "coherence_llm_mistral.json",
+                },
+            ]
+        })
+        assert [judge.key for judge in judges] == ["gpt5", "mistral"]
+        assert judges[0].default_model == "gpt-5"
+        assert judges[0].deployment == "custom-gpt"
+        assert judges[1].deployment == "custom-mistral"
+        assert judges[1].artifact_filename == "coherence_llm_mistral.json"
+
+
 class TestBuildCrossJudgeReport:
     def test_three_judge_aggregate(self):
         outcomes = [
@@ -300,7 +327,9 @@ class TestRunCrossJudge:
         # Don't actually construct an Anthropic client — stub the provider factory
         monkeypatch.setattr(
             cross_judge, "_build_provider",
-            lambda family, api_key: SimpleNamespace(name=family),
+            lambda model, api_key, family=None, deployment=None: SimpleNamespace(
+                name=family or model
+            ),
         )
         monkeypatch.setattr(
             cross_judge, "analyze_coherence_llm",
@@ -326,7 +355,9 @@ class TestRunCrossJudge:
         assert artifact["score"] == 0.73
         # Aggregate written
         agg = json.loads((case_dir / "artifacts" / "cross_judge_comparison.json").read_text())
+        agreement = json.loads((case_dir / "artifacts" / "cross_judge_agreement.json").read_text())
         assert agg["n_judges_ran"] == 1
+        assert agreement == agg
 
     def test_judge_errors_are_redacted_in_artifacts(self, tmp_path: Path, monkeypatch):
         case_dir = tmp_path / "case-03"
@@ -342,7 +373,9 @@ class TestRunCrossJudge:
         monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
         monkeypatch.setattr(
             cross_judge, "_build_provider",
-            lambda family, api_key: SimpleNamespace(name=family),
+            lambda model, api_key, family=None, deployment=None: SimpleNamespace(
+                name=family or model
+            ),
         )
         monkeypatch.setattr(cross_judge, "analyze_coherence_llm", _secret_error_report)
 
@@ -399,7 +432,9 @@ class TestRunCrossJudge:
 
         monkeypatch.setattr(
             cross_judge, "_build_provider",
-            lambda family, api_key: SimpleNamespace(name=family),
+            lambda model, api_key, family=None, deployment=None: SimpleNamespace(
+                name=family or model
+            ),
         )
         monkeypatch.setattr(cross_judge, "analyze_coherence_llm", _erroring_report)
 

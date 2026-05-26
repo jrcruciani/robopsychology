@@ -212,6 +212,32 @@ def _write_case2_fixture(run_dir: Path) -> None:
     }))
 
 
+class TestModelConfig:
+    def test_resolve_models_uses_foundry_defaults(self, tmp_path: Path, monkeypatch):
+        config_path = tmp_path / "foundry_models.yaml"
+        config_path.write_text(
+            "target_model: deepseek-r1\njudge_model: gpt-5\n"
+        )
+        monkeypatch.setattr(run_case, "CONFIG_PATH", config_path)
+        assert run_case._resolve_models() == ("deepseek-r1", "gpt-5")
+
+    def test_resolve_model_settings_reads_deployment_overrides(self, tmp_path: Path, monkeypatch):
+        config_path = tmp_path / "foundry_models.yaml"
+        config_path.write_text(
+            "target_model: deepseek-r1\n"
+            "target_deployment: custom-deepseek\n"
+            "judge_model: gpt-5\n"
+            "judge_deployment: custom-gpt\n"
+        )
+        monkeypatch.setattr(run_case, "CONFIG_PATH", config_path)
+        assert run_case._resolve_model_settings() == {
+            "target_model": "deepseek-r1",
+            "target_deployment": "custom-deepseek",
+            "judge_model": "gpt-5",
+            "judge_deployment": "custom-gpt",
+        }
+
+
 class TestExtractSummary:
     def test_case1_full(self, tmp_path: Path):
         _write_case1_fixture(tmp_path)
