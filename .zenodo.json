@@ -26,13 +26,11 @@
   "related_identifiers": [
     {
       "identifier": "https://en.impermanente.es/essays/robopsychology/",
-      "relation": "isDocumentedBy",
-      "resource_type": "publication-article"
+      "relation": "isDocumentedBy"
     },
     {
       "identifier": "https://github.com/jrcruciani/robopsychology",
-      "relation": "isSupplementTo",
-      "resource_type": "software"
+      "relation": "isSupplementTo"
     }
   ]
 }
