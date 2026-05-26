@@ -10,10 +10,6 @@
 
 ## 📖 Read the playbook
 
-<!-- TODO: actualizar URL cuando se publique -->
-The canonical practitioner-facing version is the published playbook:
-[`Robopsychology: A Diagnostic Playbook for AI Behavior`](https://impermanente.es/robopsychology-playbook/).
-
 This repository is the technical backing: method notes, taxonomy, validation
 cases, paper draft, and an optional CLI implementation for automating the
 playbook.
