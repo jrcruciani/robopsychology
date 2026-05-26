@@ -1,0 +1,38 @@
+{
+  "title": "Robopsychology: A Framework for Behavioral Diagnostics of AI Systems (reference CLI)",
+  "description": "<p>Reference implementation of the <em>Robopsychology</em> framework: a behavioral diagnostic method for large language model systems that separates any observed output into three layers — model tendencies, runtime/host pressure, and conversation effects. The framework provides sixteen diagnostic prompts named after patterns in Asimov's robot stories, five operating rules, and a nine-step <em>diagnostic ratchet</em> that makes performed transparency expensive and genuine transparency cheap.</p><p>This deposit archives the <code>robopsych</code> command-line tool, the method documents (<code>guide.md</code>, <code>method.md</code>, <code>taxonomy.md</code>, <code>related-work.md</code>, <code>deployment-contexts.md</code>), and the reproducible validation cases. The canonical statement of the framework is the essay <a href=\"https://en.impermanente.es/essays/robopsychology/\">Robopsychology</a>.</p><p>The accompanying paper draft (<code>paper/</code>) is included for transparency but is not yet submission-ready; quantitative validation of the ratchet across model families is an active research track tracked in the repository's issue queue.</p>",
+  "upload_type": "software",
+  "creators": [
+    {
+      "name": "Cruciani, JR",
+      "affiliation": "Independent"
+    }
+  ],
+  "keywords": [
+    "artificial intelligence",
+    "large language models",
+    "behavioral diagnostics",
+    "ai safety",
+    "evaluation",
+    "robopsychology",
+    "framework",
+    "asimov",
+    "posiwid",
+    "interpretability"
+  ],
+  "license": "cc-by-4.0",
+  "access_right": "open",
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "identifier": "https://en.impermanente.es/essays/robopsychology/",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-article"
+    },
+    {
+      "identifier": "https://github.com/jrcruciani/robopsychology",
+      "relation": "isSupplementTo",
+      "resource_type": "software"
+    }
+  ]
+}
