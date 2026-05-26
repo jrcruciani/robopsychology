@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/jrcruciani/robopsychology/actions/workflows/ci.yml/badge.svg)](https://github.com/jrcruciani/robopsychology/actions/workflows/ci.yml)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20396020.svg)](https://doi.org/10.5281/zenodo.20396020)
 
 **A framework for diagnosing AI behavior — method, taxonomy, ratchet, and a reference CLI.**
 
@@ -334,7 +335,20 @@ If you cite the **framework**, cite the canonical essay:
 }
 ```
 
-If you cite the **reference CLI** specifically, use the Zenodo DOI once minted (a release on this repository triggers Zenodo archival once the integration is wired up). Metadata for that archival lives in [`.zenodo.json`](.zenodo.json) and [`CITATION.cff`](CITATION.cff).
+If you cite the **reference CLI** specifically, use the Zenodo concept DOI (always resolves to the latest version):
+
+```bibtex
+@software{cruciani2026robopsych_cli,
+  author    = {Cruciani, JR},
+  title     = {Robopsychology: A Framework for Behavioral Diagnostics of AI Systems (reference CLI)},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.20396020},
+  url       = {https://doi.org/10.5281/zenodo.20396020}
+}
+```
+
+For a specific release, pin the version DOI from the Zenodo record. Metadata for the archive lives in [`.zenodo.json`](.zenodo.json) and [`CITATION.cff`](CITATION.cff).
 
 ## License
 

@@ -8,6 +8,18 @@ implementation and tracks the framework, not the other way around.
 
 ## [Unreleased]
 
+- README now displays the Zenodo concept DOI badge (`10.5281/zenodo.20396020`).
+- `CITATION.cff` carries the concept and version DOIs.
+
+## [5.0.2] - 2026-05-26
+
+- `.zenodo.json` schema fix: drop invalid `resource_type` keys inside
+  `related_identifiers` (Zenodo expects an object, not a hyphenated
+  string; the field is optional). No code changes — release exists to
+  re-trigger the Zenodo deposit after v5.0.1's webhook returned HTTP 409.
+
+## [5.0.1] - 2026-05-26
+
 - Repository reframed around the framework rather than the CLI.
 - `LICENSE` replaced with the full CC BY 4.0 legalcode so GitHub and Zenodo
   detect the license correctly.
