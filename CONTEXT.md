@@ -8,7 +8,7 @@ Respaldo técnico de un playbook diagnóstico publicado para comportamiento de I
 
 Diagnóstico de **segunda intención**: no qué hace el sistema, sino qué ley interna o restricción externa produce ese output. Inspirado en Susan Calvin (Asimov). Extiende POSIWID (Stafford Beer).
 
-## Estado actual — v3.1.0
+## Estado actual — v5.0.0
 
 - **CLI** `robopsych` con 9 comandos: run, guided, ratchet, compare, list, show, crosscheck, coherence, score
 - **16+ prompts diagnósticos** en 4 niveles (Quick, Structural, Systemic, Meta) + variantes `*d` (diagnostic-only)
@@ -19,15 +19,17 @@ Diagnóstico de **segunda intención**: no qué hace el sistema, sino qué ley i
 - **Scoring cuantitativo**: módulo `scoring` con rubrics configurables
 - **Session persistence**: `--session`/`--resume` para guardar y continuar ratchets largos
 - **Providers**: Anthropic (Claude) + OpenAI-compatible + GeminiProvider (google-generativeai)
-- **Test suite**: 166 tests, CI con GitHub Actions (Python 3.11/3.12/3.13), 60% coverage
+- **Test suite**: 351 tests, 2 skips, CI con GitHub Actions (Python 3.11/3.12/3.13)
 - **Output**: Markdown + JSON estructurado con label counts (Observed/Inferred) — "Opaque" eliminado (es juicio del analista humano)
 - **Reportes**: label indicators 🟢🟡, dashboard post-ratchet, recommended next steps
 - **CLI flags**: `--diagnostic-only`/`--intervention-only` (reemplaza `--mode`), `--verbose` en guided
+- **Release metadata**: `pyproject.toml`, `src/robopsych/__init__.py` y el banner del CLI ahora están alineados con la versión `5.0.0`
 
 ## Versiones
 
 | Versión | Foco |
 |---------|------|
+| v5.0 | Alineación de release metadata y docs con el CLI actual (`5.0.0`) |
 | v1.0–v1.7 | Prompt collection, manual copy-paste. De 4 a 16 prompts. |
 | v2.0 | CLI `robopsych` con Typer+Rich. Run, guided, ratchet, compare. |
 | v2.5 | Overhaul documental: README práctico, epistemic note, taxonomy, related-work, validation |

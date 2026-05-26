@@ -292,7 +292,9 @@ This extends [POSIWID](https://en.wikipedia.org/wiki/The_purpose_of_a_system_is_
 
 Think of it as a clinical interview plus a lightweight behavioral lab, not a debugger. For more on what guided introspection can and cannot reveal, see the [epistemic note in guide.md](guide.md#epistemic-note). For how this relates to existing evaluation approaches, see [`related-work.md`](related-work.md).
 
-## New in v3.0
+## Current release highlights
+
+> The current package release is `robopsych` 5.0.0. The examples below reflect the live CLI surface and the workflows actively maintained in this repository.
 
 ### Automated behavioral cross-checks
 ```bash
@@ -327,6 +329,7 @@ robopsych ratchet --model gemini-2.0-flash --scenario scenario.yaml
 
 ## Version history
 
+- **v5.0** — Current package release (`robopsych` 5.0.0); release metadata and docs now stay aligned with the CLI implementation.
 - **v4.0** — LLM-judge coherence analysis (opt-in `--coherence-judge`), structured `[Observed]/[Inferred]` label enforcement with parser fallback, three reproducible case studies with live-API artifacts (`validation/reproducible/`)
 - **v3.1** — Hermes 4 review: remove Opaque label (human analyst judgment), external judge for A/B cross-checks (`--judge`), session persistence (`--session`/`--resume`), guided mode UX with descriptions, CLI mode consistency (`--diagnostic-only`/`--intervention-only`), hardened coherence analysis, JSON error handling, improved examples, README positioning
 - **v3.0** — Behavioral laboratory: automated A/B cross-checks (`crosscheck`), coherence analysis (`coherence`), quantitative scoring (`score`), diagnostic-only prompt variants (`--pure`), GeminiProvider, PyPI publish

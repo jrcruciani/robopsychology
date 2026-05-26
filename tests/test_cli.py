@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from typer.testing import CliRunner
 
+from robopsych import __version__
 from robopsych.cli import app
 
 runner = CliRunner()
@@ -114,6 +115,7 @@ class TestNoArgsShowsWelcome:
         result = runner.invoke(app, [])
         assert result.exit_code == 0
         assert "robopsych" in result.output.lower()
+        assert f"v{__version__}" in result.output
 
 
 class TestRegexCoherenceWarning:

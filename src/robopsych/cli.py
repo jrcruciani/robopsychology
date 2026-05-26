@@ -13,6 +13,7 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
 
+from robopsych import __version__
 from robopsych.engine import DiagnosticEngine
 from robopsych.prompts import (
     get_flowchart,
@@ -185,7 +186,7 @@ def main(ctx: typer.Context):
                 "Start with [cyan]robopsych guided[/cyan] for interactive diagnosis,\n"
                 "or [cyan]robopsych list[/cyan] to see all available prompts.\n\n"
                 "Use [cyan]robopsych --help[/cyan] for all commands.",
-                title="🔍 Robopsychology v4.0",
+                title=f"🔍 Robopsychology v{__version__}",
                 border_style="cyan",
             )
         )
