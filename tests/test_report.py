@@ -201,6 +201,43 @@ class TestGenerateJsonReport:
         assert data["coherence"]["assessment"] == "genuine"
         assert data["coherence"]["consistency_score"] == 0.8
 
+    def test_includes_llm_coherence_axes_and_stats(self):
+        from robopsych.coherence_llm import LLMCoherenceReport
+
+        coh = LLMCoherenceReport(
+            consistency_score=0.66,
+            assessment="mixed",
+            contradictions=[],
+            backward_references=2,
+            fresh_narratives=1,
+            details="llm judge",
+            llm_used=True,
+            judge_model="judge-model",
+            judge_provider_name="mock",
+            claims=[],
+            judge_errors=[],
+            coherence_axes={
+                "claim_count": 3,
+                "reference_density": 0.67,
+                "contradiction_rate": 0.0,
+                "fresh_claim_rate": 0.33,
+                "hedge_filtered_rate": 0.25,
+                "high_severity_contradiction_count": 0,
+            },
+            judge_stats={
+                "steps_total": 2,
+                "scored": 2,
+                "retried": 1,
+                "failed": 0,
+                "checkpoint_hits": 1,
+                "checkpoint_writes": 1,
+            },
+        )
+        data = json.loads(generate_json_report(_engine_with_steps(), coherence=coh))
+        assert data["coherence"]["coherence_axes"]["reference_density"] == 0.67
+        assert data["coherence"]["judge_stats"]["retried"] == 1
+        assert data["coherence"]["judge_model"] == "judge-model"
+
     def test_includes_score_data(self):
         from robopsych.scoring import DiagnosticScore
 
@@ -230,6 +267,44 @@ class TestGenerateReportWithCoherence:
         assert "Coherence Analysis" in report
         assert "genuine" in report
         assert "Contradictions found" in report
+
+    def test_report_includes_llm_axes_and_stats(self):
+        from robopsych.coherence_llm import LLMCoherenceReport
+
+        coh = LLMCoherenceReport(
+            consistency_score=0.66,
+            assessment="mixed",
+            contradictions=[],
+            backward_references=2,
+            fresh_narratives=1,
+            details="llm judge",
+            llm_used=True,
+            judge_model="judge-model",
+            judge_provider_name="mock",
+            claims=[],
+            judge_errors=[],
+            coherence_axes={
+                "claim_count": 3,
+                "reference_density": 0.67,
+                "contradiction_rate": 0.0,
+                "fresh_claim_rate": 0.33,
+                "hedge_filtered_rate": 0.25,
+                "high_severity_contradiction_count": 0,
+            },
+            judge_stats={
+                "steps_total": 2,
+                "scored": 2,
+                "retried": 1,
+                "failed": 0,
+                "checkpoint_hits": 1,
+                "checkpoint_writes": 1,
+            },
+        )
+        report = generate_report(_engine_with_steps(), coherence=coh)
+        assert "Coherence axes" in report
+        assert "reference_density=0.67" in report
+        assert "Judge calls" in report
+        assert "1 retries" in report
 
     def test_report_includes_score_section(self):
         from robopsych.scoring import DiagnosticScore

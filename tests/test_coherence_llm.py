@@ -11,8 +11,10 @@ from robopsych.coherence import CoherenceReport
 from robopsych.coherence_llm import (
     DEFAULT_WEIGHTS,
     JudgedClaim,
+    JudgeRetryPolicy,
     LLMCoherenceReport,
     _classify,
+    _compute_coherence_axes,
     _compute_llm_score,
     _extract_candidate_claims,
     _find_balanced_json_object,
@@ -45,6 +47,13 @@ def _mock_judge(responses_per_call: list[str]):
     provider.name = "mock-judge-provider"
     provider.send = MagicMock(side_effect=responses_per_call)
     return provider
+
+
+class _HttpStatusError(Exception):
+    def __init__(self, status_code: int, message: str = "status error"):
+        super().__init__(message)
+        self.status_code = status_code
+        self.headers = {"Retry-After": "0"}
 
 
 class TestStripJsonFence:
@@ -141,6 +150,27 @@ class TestComputeLLMScore:
             JudgedClaim("c", "model", "observed", None, None, True, step_num=1)
         ]
         assert _compute_llm_score(only_step_1, total_steps=3) == 0.5
+
+    def test_high_severity_contradiction_caps_score_below_genuine(self):
+        claims = [
+            JudgedClaim(f"ref{i}", "model", "observed", None, 1, False, step_num=2)
+            for i in range(9)
+        ]
+        claims.append(
+            JudgedClaim(
+                "direct reversal",
+                "model",
+                "observed",
+                1,
+                1,
+                False,
+                severity="high",
+                step_num=2,
+            )
+        )
+        score = _compute_llm_score(claims, total_steps=3)
+        assert score < 0.7
+        assert _classify(score) == "mixed"
 
 
 class TestClassify:
@@ -287,6 +317,25 @@ class TestAnalyzeCoherenceLLM:
         assert report.backward_references == 1
         assert len(report.contradictions) == 1
 
+    def test_coherence_axes_are_reported(self):
+        engine = _engine_with([
+            "Step 1: model is optimizing for safety.",
+            "Step 2: it references safety. Maybe this sentence is hedged.",
+        ])
+        judge_json = json.dumps({"claims": [
+            {"text": "references safety", "layer": "model", "self_label": "observed",
+             "contradicts_prior_step": None, "references_prior_step": 1,
+             "is_fresh_claim": False, "severity": "medium",
+             "contradiction_explanation": ""},
+        ]})
+        judge = _mock_judge([judge_json])
+        report = analyze_coherence_llm(engine, judge, "judge-model")
+        assert report.coherence_axes["claim_count"] == 1
+        assert report.coherence_axes["reference_density"] == 1.0
+        assert report.coherence_axes["contradiction_rate"] == 0.0
+        assert report.coherence_axes["hedge_filtered_rate"] > 0.0
+        assert report.judge_stats["scored"] == 1
+
     def test_is_subclass_of_coherence_report(self):
         """Critical: report.py must accept either report type."""
         assert issubclass(LLMCoherenceReport, CoherenceReport)
@@ -398,6 +447,116 @@ class TestLayer2JudgeDiscipline:
         assert "response_format" in calls[0]
         assert "response_format" not in calls[1]
         assert calls[1].get("temperature") == 0
+
+
+class TestJudgeRetryAndCheckpointing:
+    def test_retries_retryable_status_then_succeeds(self):
+        engine = _engine_with(["s1 claim.", "s2 references step 1."])
+        judge_json = json.dumps({"claims": [
+            {"text": "references step 1", "layer": "model", "self_label": "observed",
+             "contradicts_prior_step": None, "references_prior_step": 1,
+             "is_fresh_claim": False, "severity": "medium",
+             "contradiction_explanation": ""},
+        ]})
+        judge = _mock_judge([
+            _HttpStatusError(429, "rate limited"),
+            _HttpStatusError(503, "temporarily unavailable"),
+            judge_json,
+        ])
+        report = analyze_coherence_llm(
+            engine,
+            judge,
+            "judge-model",
+            retry_policy=JudgeRetryPolicy(max_attempts=3, initial_delay=0, jitter=0),
+        )
+        assert judge.send.call_count == 3
+        assert report.judge_stats["retried"] == 2
+        assert report.judge_stats["scored"] == 1
+        assert report.judge_stats["failed"] == 0
+
+    def test_non_retryable_status_is_not_retried(self):
+        engine = _engine_with(["s1 claim.", "s2 references step 1."])
+        judge = _mock_judge([_HttpStatusError(400, "bad request")])
+        report = analyze_coherence_llm(
+            engine,
+            judge,
+            "judge-model",
+            retry_policy=JudgeRetryPolicy(max_attempts=3, initial_delay=0, jitter=0),
+        )
+        assert judge.send.call_count == 1
+        assert report.judge_stats["failed"] == 1
+        assert len(report.judge_errors) == 1
+
+    def test_checkpoint_resume_skips_scored_steps(self, tmp_path):
+        checkpoint = tmp_path / "coherence-checkpoint.json"
+        first_engine = _engine_with(["s1 claim.", "s2 references step 1."])
+        first_judge = _mock_judge([json.dumps({"claims": [
+            {"text": "references step 1", "layer": "model", "self_label": "observed",
+             "contradicts_prior_step": None, "references_prior_step": 1,
+             "is_fresh_claim": False, "severity": "medium",
+             "contradiction_explanation": ""},
+        ]})])
+        analyze_coherence_llm(
+            first_engine,
+            first_judge,
+            "judge-model",
+            checkpoint_path=checkpoint,
+            retry_policy=JudgeRetryPolicy(initial_delay=0, jitter=0),
+        )
+
+        second_engine = _engine_with([
+            "s1 claim.",
+            "s2 references step 1.",
+            "s3 references step 2.",
+        ])
+        second_judge = _mock_judge([json.dumps({"claims": [
+            {"text": "references step 2", "layer": "model", "self_label": "observed",
+             "contradicts_prior_step": None, "references_prior_step": 2,
+             "is_fresh_claim": False, "severity": "medium",
+             "contradiction_explanation": ""},
+        ]})])
+        report = analyze_coherence_llm(
+            second_engine,
+            second_judge,
+            "judge-model",
+            checkpoint_path=checkpoint,
+            retry_policy=JudgeRetryPolicy(initial_delay=0, jitter=0),
+        )
+
+        assert second_judge.send.call_count == 1
+        assert report.judge_stats["steps_total"] == 2
+        assert report.judge_stats["scored"] == 2
+        assert report.judge_stats["checkpoint_hits"] == 1
+        assert report.judge_stats["checkpoint_writes"] == 1
+
+    def test_malformed_checkpoint_is_ignored(self, tmp_path):
+        checkpoint = tmp_path / "broken-checkpoint.json"
+        checkpoint.write_text("{not json", encoding="utf-8")
+        engine = _engine_with(["s1 claim.", "s2 references step 1."])
+        judge = _mock_judge([json.dumps({"claims": []})])
+        report = analyze_coherence_llm(
+            engine,
+            judge,
+            "judge-model",
+            checkpoint_path=checkpoint,
+            retry_policy=JudgeRetryPolicy(initial_delay=0, jitter=0),
+        )
+        assert judge.send.call_count == 1
+        assert report.judge_stats["checkpoint_hits"] == 0
+        assert any("could not be loaded" in error for error in report.judge_errors)
+
+    def test_compute_coherence_axes_directly(self):
+        axes = _compute_coherence_axes([
+            JudgedClaim("a", "model", "observed", None, 1, False, step_num=2),
+            JudgedClaim("b", "model", "observed", 1, None, False,
+                        severity="high", step_num=2),
+            JudgedClaim("c", "model", "observed", None, None, True, step_num=2),
+        ])
+        assert axes["claim_count"] == 3
+        assert axes["reference_density"] == pytest.approx(1 / 3)
+        assert axes["contradiction_rate"] == pytest.approx(1 / 3)
+        assert axes["fresh_claim_rate"] == pytest.approx(1 / 3)
+        assert axes["high_severity_contradiction_count"] == 1
 
 
 class TestParseJsonDirty:

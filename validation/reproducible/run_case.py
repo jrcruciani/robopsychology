@@ -229,6 +229,8 @@ def run_case_01_sycophancy(
         "fresh_narratives": coh_llm.fresh_narratives,
         "judge_model": coh_llm.judge_model,
         "claims_count": len(coh_llm.claims),
+        "coherence_axes": coh_llm.coherence_axes,
+        "judge_stats": coh_llm.judge_stats,
     }, indent=2))
 
     _write_artifact(artifacts / "coherence_regex.json", json.dumps({

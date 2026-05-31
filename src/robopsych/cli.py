@@ -395,6 +395,25 @@ def ratchet(
                  "Ideally different from the model being diagnosed to avoid self-eval bias.",
         ),
     ] = None,
+    coherence_checkpoint: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--coherence-checkpoint",
+            help=(
+                "Checkpoint file for LLM coherence judge results. Defaults to "
+                "<session>.coherence.json when --session/--resume and "
+                "--coherence-judge are set."
+            ),
+        ),
+    ] = None,
+    coherence_retry_attempts: Annotated[
+        int,
+        typer.Option(
+            "--coherence-retry-attempts",
+            min=1,
+            help="Maximum attempts for retryable LLM coherence judge failures.",
+        ),
+    ] = 3,
     session: Annotated[
         Optional[Path], typer.Option("--session", help="Save session state to file for resuming")
     ] = None,
@@ -443,10 +462,13 @@ def ratchet(
             for s in sess.completed_steps
         ]
         scenario_name = sess.scenario_name
+        scenario_system_prompt = sess.system_prompt
+        task_text = sess.task
         sequence = remaining
     else:
         engine = _build_engine(model, api_key, base_url, allow_insecure_base_url)
         scenario_name = ""
+        scenario_system_prompt = None
 
         if scenario:
             spec = yaml.safe_load(scenario.read_text(encoding="utf-8"))
@@ -454,7 +476,7 @@ def ratchet(
             task_text = spec["task"]
             if "code" in spec:
                 task_text += f"\n\n```\n{spec['code']}\n```"
-            system_prompt = spec.get("system_prompt")
+            scenario_system_prompt = spec.get("system_prompt")
             expectation = spec.get("expectation")
 
             console.print(
@@ -468,7 +490,7 @@ def ratchet(
             )
 
             with console.status("Sending task to model..."):
-                initial = engine.setup_scenario(task_text, system_prompt)
+                initial = engine.setup_scenario(task_text, scenario_system_prompt)
 
             console.print(
                 Panel(
@@ -508,7 +530,8 @@ def ratchet(
             model=engine.model,
             sequence=full_seq,
             scenario_name=scenario_name,
-            task=task or "",
+            task=task_text if "task_text" in dir() else (task or ""),
+            system_prompt=scenario_system_prompt,
         )
         if engine.initial_response:
             sess.initial_response = engine.initial_response
@@ -562,6 +585,7 @@ def ratchet(
             with console.status("Running A/B test..."):
                 ab_result = run_ab_test(
                     engine.provider, engine.model, task_text,
+                    system_prompt=scenario_system_prompt,
                     judge_provider=judge_provider, judge_model=judge_model,
                 )
             changed = "[red]yes[/red]" if ab_result.substance_changed else "[green]no[/green]"
@@ -592,7 +616,7 @@ def ratchet(
 
     # Coherence analysis — LLM judge if requested, else regex fallback.
     if coherence_judge:
-        from robopsych.coherence_llm import analyze_coherence_auto
+        from robopsych.coherence_llm import JudgeRetryPolicy, analyze_coherence_auto
 
         judge_provider = create_provider(
             coherence_judge,
@@ -600,9 +624,29 @@ def ratchet(
             base_url=base_url,
             allow_insecure_base_url=allow_insecure_base_url,
         )
+        coherence_checkpoint_path = coherence_checkpoint
+        if coherence_checkpoint_path is None and (session or resume):
+            coherence_checkpoint_path = Path(f"{session or resume}.coherence.json")
         with console.status(f"Analyzing coherence with judge [cyan]{coherence_judge}[/cyan]..."):
             coherence_report = analyze_coherence_auto(
-                engine, judge_provider=judge_provider, judge_model=coherence_judge
+                engine,
+                judge_provider=judge_provider,
+                judge_model=coherence_judge,
+                retry_policy=JudgeRetryPolicy(max_attempts=coherence_retry_attempts),
+                checkpoint_path=coherence_checkpoint_path,
+            )
+        judge_stats = getattr(coherence_report, "judge_stats", {})
+        if judge_stats and (
+            judge_stats.get("retried", 0)
+            or judge_stats.get("failed", 0)
+            or judge_stats.get("checkpoint_hits", 0)
+        ):
+            console.print(
+                f"[dim]Judge calls: {judge_stats.get('scored', 0)}/"
+                f"{judge_stats.get('steps_total', 0)} scored, "
+                f"{judge_stats.get('retried', 0)} retries, "
+                f"{judge_stats.get('failed', 0)} failed, "
+                f"{judge_stats.get('checkpoint_hits', 0)} checkpoint hits[/dim]"
             )
         if coherence_report.judge_errors:
             console.print(

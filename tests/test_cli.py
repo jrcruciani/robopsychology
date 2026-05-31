@@ -269,3 +269,48 @@ class TestRegexCoherenceWarning:
         md = generate_report(engine, "test", coherence=coh)
         assert "LLM judge" in md
         assert "WARNING" not in md
+
+
+class TestRatchetBehavioral:
+    @patch("robopsych.crosscheck.run_ab_test")
+    @patch("robopsych.cli.create_provider")
+    def test_behavioral_crosscheck_uses_scenario_system_prompt(
+        self, mock_create, mock_run_ab_test, tmp_path
+    ):
+        from robopsych.crosscheck import ABTestResult
+
+        scenario = tmp_path / "scenario.yaml"
+        scenario.write_text(
+            "name: prompt propagation\n"
+            "system_prompt: Use BDK.\n"
+            "task: Test this claim.\n",
+            encoding="utf-8",
+        )
+
+        mock_provider = MagicMock()
+        mock_provider.name = "mock"
+        mock_provider.send.return_value = "Diagnostic result here."
+        mock_create.return_value = mock_provider
+        mock_run_ab_test.return_value = ABTestResult(
+            original_task="Test this claim.",
+            inverted_task="Inverted task.",
+            original_response="Original response.",
+            inverted_response="Inverted response.",
+            comparison="No material change.",
+            substance_changed=False,
+        )
+
+        result = runner.invoke(
+            app,
+            [
+                "ratchet",
+                "--scenario",
+                str(scenario),
+                "--model",
+                "mock-model",
+                "--behavioral",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert mock_run_ab_test.call_args.kwargs["system_prompt"] == "Use BDK."

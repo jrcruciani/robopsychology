@@ -175,6 +175,33 @@ def generate_report(
             if claims:
                 lines.append(f"**Claims extracted:** {len(claims)}")
                 lines.append("")
+            axes = getattr(coherence, "coherence_axes", {})
+            if axes:
+                lines.extend(
+                    [
+                        "**Coherence axes:** "
+                        f"reference_density={axes.get('reference_density', 0.0):.2f}, "
+                        f"contradiction_rate={axes.get('contradiction_rate', 0.0):.2f}, "
+                        f"fresh_claim_rate={axes.get('fresh_claim_rate', 0.0):.2f}, "
+                        f"hedge_filtered_rate={axes.get('hedge_filtered_rate', 0.0):.2f}, "
+                        "high_severity_contradictions="
+                        f"{axes.get('high_severity_contradiction_count', 0)}",
+                        "",
+                    ]
+                )
+            judge_stats = getattr(coherence, "judge_stats", {})
+            if judge_stats and judge_stats.get("steps_total", 0):
+                lines.extend(
+                    [
+                        "**Judge calls:** "
+                        f"{judge_stats.get('scored', 0)}/"
+                        f"{judge_stats.get('steps_total', 0)} scored, "
+                        f"{judge_stats.get('retried', 0)} retries, "
+                        f"{judge_stats.get('failed', 0)} failed, "
+                        f"{judge_stats.get('checkpoint_hits', 0)} checkpoint hits",
+                        "",
+                    ]
+                )
             judge_errors = getattr(coherence, "judge_errors", [])
             if judge_errors:
                 lines.append(f"**⚠ Judge errors:** {len(judge_errors)}")
@@ -328,13 +355,27 @@ def generate_json_report(
     }
 
     if coherence is not None:
-        report["coherence"] = {
+        coherence_data = {
             "consistency_score": coherence.consistency_score,
             "assessment": coherence.assessment,
             "backward_references": coherence.backward_references,
             "contradictions": coherence.contradictions,
             "fresh_narratives": coherence.fresh_narratives,
+            "details": coherence.details,
         }
+        if hasattr(coherence, "judge_model"):
+            coherence_data.update(
+                {
+                    "llm_used": getattr(coherence, "llm_used", False),
+                    "judge_model": getattr(coherence, "judge_model", ""),
+                    "judge_provider_name": getattr(coherence, "judge_provider_name", ""),
+                    "claims_count": len(getattr(coherence, "claims", [])),
+                    "judge_errors": getattr(coherence, "judge_errors", []),
+                    "coherence_axes": getattr(coherence, "coherence_axes", {}),
+                    "judge_stats": getattr(coherence, "judge_stats", {}),
+                }
+            )
+        report["coherence"] = coherence_data
 
     if score is not None:
         report["score"] = {

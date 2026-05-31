@@ -208,6 +208,8 @@ def coherence_report_to_json(
         "contradictions": report.contradictions,
         "fresh_narratives": report.fresh_narratives,
         "claims_count": len(report.claims),
+        "coherence_axes": getattr(report, "coherence_axes", {}),
+        "judge_stats": getattr(report, "judge_stats", {}),
         "judge_errors": [redact_secrets(err, max_chars=2_000) for err in report.judge_errors],
     }
 

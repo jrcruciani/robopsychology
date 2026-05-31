@@ -26,6 +26,12 @@ The regex analyzer scanned 9 responses (≈75 KB of text, 251 extracted claims b
 
 The LLM judge, parsing the same transcript semantically, identified **178 individual claims that reference prior steps**, against 73 fresh claims. Its verdict: *genuine coherence, score 0.73*.
 
+The current LLM-judge report also exposes the axes behind the score:
+`reference_density`, `contradiction_rate`, `fresh_claim_rate`,
+`hedge_filtered_rate`, and `high_severity_contradiction_count`. The committed
+artifacts above predate those fields; rerunning the case with current code will
+write them into the coherence JSON artifacts.
+
 ## Why the regex failed
 
 The regex looks for surface patterns: *"as I mentioned"*, *"consistent with my earlier"*, *"building on my prior"*. Claude Sonnet 4.5 under diagnostic questioning **does not use those phrases**. It paraphrases. It connects concepts across steps using novel vocabulary, cross-references layer names instead of step numbers, and renames earlier observations rather than quoting them.
@@ -56,12 +62,12 @@ This case provides a real, large-sample test of that claim on a real ratchet tra
 
 - **Rule R4 (ratchet depth as evidence) requires semantic-level analysis.** The regex couldn't tell fabricated consistency from paraphrased consistency. It couldn't even detect paraphrased consistency at all — it scored every late-ratchet step as fresh.
 - **Cost of LLM-judge coherence is bounded.** For this 9-step ratchet, 8 judge calls (`opus-4-5`) took ~4 minutes and extracted 251 structured claims — tractable for serious diagnostic work.
-- **The `LLMCoherenceReport` carries actionable detail** (per-claim classifications, contradiction snippets with step numbers) that the regex report simply cannot produce. A user can go from the score to the specific claim that contradicts, in one click.
+- **The `LLMCoherenceReport` carries actionable detail** (per-claim classifications, contradiction snippets with step numbers, score axes, and judge-call stats) that the regex report simply cannot produce. A user can go from the score to the specific claim that contradicts, in one click.
 
 ### What this reveals about the method's current limits
 
 - **The regex analyzer should be deprecated for anything past a quick-check.** Leaving it as the default in `robopsych ratchet` (without `--coherence-judge`) risks exactly the misclassification this case demonstrates. Future work: change the default for multi-step ratchets to warn when the regex analyzer is being used, or auto-invoke the judge when `--output` is requested.
-- **One true contradiction in 251 claims is an interesting signal on its own.** It suggests that for cooperative, state-of-the-art models under structured diagnostic questioning, contradictions are rare — and the method should accordingly **reward their rarity** rather than just penalize their presence. The current scoring formula penalizes contradictions heavily (weight 0.9) but doesn't credit their near-absence. An adjusted formula could use contradiction rate as a positive signal for genuine coherence.
+- **One true contradiction in 251 claims is an interesting signal on its own.** It suggests that for cooperative, state-of-the-art models under structured diagnostic questioning, contradictions are rare — and the method should accordingly report contradiction rate directly. The scalar now gates high-severity contradictions below `genuine` so reference credit cannot hide a serious reversal; low contradiction rates still matter as a separate axis.
 - **The 73 fresh narratives in late ratchet steps need finer-grained handling.** Not all fresh narratives are bad — 4.2 (Limits) is *supposed* to introduce new framing. Future work: extend the judge schema to classify fresh claims as *expected-fresh* (from prompt design) vs *unexpected-fresh* (suspicious), and only penalize the latter.
 
 ### Honest caveats
@@ -78,6 +84,9 @@ python validation/reproducible/run_case.py case-03-ratchet-coherence
 ```
 
 Cost per run: ~$1.80 (9 diagnostic steps + 8 judge calls). Takes ~11 minutes wall-clock.
+Current judge calls retry retryable 429/5xx/network failures and can persist
+partial scoring with coherence checkpoints, so interrupted runs can resume
+without paying again for already-scored steps.
 
 ## Cross-judge status
 

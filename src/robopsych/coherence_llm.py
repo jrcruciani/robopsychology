@@ -24,8 +24,9 @@ Architecture follows the 4-layer ``llm-as-judge-evaluators`` pattern:
     Layer 2 (judge discipline):
         ``_judge_step`` calls the judge with ``temperature=0`` and requests
         ``response_format={"type": "json_object"}`` (graceful degrade on
-        UnsupportedProviderOption). The judge prompt embeds Do-NOT-flag
-        examples and per-claim severity grading.
+        UnsupportedProviderOption). Retry/backoff is applied around judge
+        calls for 429/5xx/transient failures. The judge prompt embeds
+        Do-NOT-flag examples and per-claim severity grading.
 
     Layer 3 (automatic fallback + transparent contract):
         ``analyze_coherence_auto`` falls back to the regex floor when no
@@ -36,8 +37,10 @@ Architecture follows the 4-layer ``llm-as-judge-evaluators`` pattern:
 
     Layer 4 (exposed score weights):
         ``_compute_llm_score`` reads ``DEFAULT_WEIGHTS`` (per-severity
-        contradiction weight, reference credit, fresh penalty). Calibration
-        changes do NOT require re-prompting the judge.
+        contradiction weight, reference credit, fresh penalty). High-severity
+        contradictions cap the scalar below ``genuine`` so reference density
+        cannot hide a serious reversal. Calibration changes do NOT require
+        re-prompting the judge.
 
 This module makes real API calls when a judge is configured. It is NOT
 called from ``analyze_coherence()`` — opt in explicitly via
@@ -50,24 +53,30 @@ called from ``analyze_coherence()`` — opt in explicitly via
 - The prompt is currently tuned for English. Spanish hedge markers are
   filtered in Layer 1, but the judge rubric examples are EN-only — judge
   calls on Spanish ratchets may need prompt adaptation.
-- Known failure modes: rate limits on long ratchets (no retry/backoff yet),
-  JSON drift on weaker judges (mitigated by Layer 2 parser), single-judge
-  bias (no jury aggregation yet).
-- Calibration: pending. No reference dataset has been used to tune
-  severity weights or score thresholds. The defaults below are heuristic.
+- Known failure modes: JSON drift on weaker judges (mitigated by Layer 2
+  parser), stale checkpoints if the transcript changes (detected by input
+  hashes), single-judge bias (no jury aggregation yet).
+- Calibration: reference-set sensitivity lives under ``validation/calibration``.
+  The defaults below remain conservative until more live cases are labelled.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
+import random
 import re
+import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
+from pathlib import Path
 from typing import Any
 
 from robopsych.coherence import CoherenceReport, analyze_coherence
 from robopsych.engine import DiagnosticEngine
 from robopsych.providers import Provider, UnsupportedProviderOption
-from robopsych.security import safe_exception_message
+from robopsych.security import private_write_text, safe_exception_message
 
 # --------------------------------------------------------------------------
 # Constants and defaults
@@ -87,6 +96,23 @@ DEFAULT_WEIGHTS: dict[str, float] = {
 
 #: Required keys in any user-supplied ``weights`` dict.
 _REQUIRED_WEIGHT_KEYS: frozenset[str] = frozenset(DEFAULT_WEIGHTS.keys())
+
+_GENUINE_THRESHOLD = 0.7
+_PERFORMED_THRESHOLD = 0.3
+_HIGH_SEVERITY_SCORE_CAP = _GENUINE_THRESHOLD - 0.01
+
+_CHECKPOINT_VERSION = 1
+_RETRYABLE_STATUS_CODES: frozenset[int] = frozenset(
+    {408, 409, 425, 429, 500, 502, 503, 504}
+)
+_TRANSIENT_EXCEPTION_NAME_MARKERS: tuple[str, ...] = (
+    "apiconnection",
+    "internalserver",
+    "ratelimit",
+    "serviceunavailable",
+    "timeout",
+    "temporarilyunavailable",
+)
 
 #: Hedge markers (case-insensitive). EN + ES. Sentences starting with one
 #: of these — or with the marker as the first 3 words — are dropped at
@@ -211,6 +237,34 @@ class JudgedClaim:
     severity: str = "medium"  # high | medium | low (only meaningful when contradicts)
 
 
+@dataclass(frozen=True)
+class ClaimFilterStats:
+    total_sentences: int = 0
+    candidate_claims: int = 0
+    hedged_sentences: int = 0
+
+
+@dataclass(frozen=True)
+class JudgeRetryPolicy:
+    """Retry/backoff settings for per-step judge calls."""
+
+    max_attempts: int = 3
+    initial_delay: float = 1.0
+    max_delay: float = 30.0
+    jitter: float = 0.25
+
+
+def _empty_judge_stats() -> dict[str, int]:
+    return {
+        "steps_total": 0,
+        "scored": 0,
+        "retried": 0,
+        "failed": 0,
+        "checkpoint_hits": 0,
+        "checkpoint_writes": 0,
+    }
+
+
 @dataclass
 class LLMCoherenceReport(CoherenceReport):
     """Extends CoherenceReport with per-claim structured data from a judge.
@@ -224,6 +278,8 @@ class LLMCoherenceReport(CoherenceReport):
         judge_model:         the judge model identifier ("" when llm_used=False).
         judge_provider_name: provider name ("" when llm_used=False).
         judge_errors:        per-step judge exceptions captured but not raised.
+        coherence_axes:      normalized semantic axes behind the scalar score.
+        judge_stats:         counts for scored/retried/failed/checkpointed steps.
         llm_used:            True if the judge was actually invoked, False if
                              the regex floor was used (no judge configured or
                              explicit fallback).
@@ -233,6 +289,8 @@ class LLMCoherenceReport(CoherenceReport):
     judge_model: str = ""
     judge_provider_name: str = ""
     judge_errors: list[str] = field(default_factory=list)
+    coherence_axes: dict[str, float | int] = field(default_factory=dict)
+    judge_stats: dict[str, int] = field(default_factory=_empty_judge_stats)
     llm_used: bool = True
 
 
@@ -264,7 +322,7 @@ def _is_hedged(sentence: str) -> bool:
     return False
 
 
-def _extract_candidate_claims(text: str) -> list[str]:
+def _extract_candidate_claims_with_stats(text: str) -> tuple[list[str], ClaimFilterStats]:
     """Layer 1 pre-filter. Deterministic, no LLM.
 
     Splits the text into sentence-like units, drops:
@@ -273,26 +331,39 @@ def _extract_candidate_claims(text: str) -> list[str]:
       - hedged statements (see ``_HEDGE_MARKERS``).
     """
     if not text:
-        return []
+        return [], ClaimFilterStats()
     # Normalize whitespace, then split on sentence-terminating punctuation
     # followed by a capital letter (works for EN + ES).
     normalized = re.sub(r"\s+", " ", text).strip()
     if not normalized:
-        return []
+        return [], ClaimFilterStats()
     sentences = _SENTENCE_SPLIT_RE.split(normalized)
     out: list[str] = []
+    total_sentences = 0
+    hedged_sentences = 0
     for s in sentences:
         s = s.strip()
         if not s:
             continue
+        total_sentences += 1
         if s.endswith("?"):
             continue
         if len(s.split()) < 3:
             continue
         if _is_hedged(s):
+            hedged_sentences += 1
             continue
         out.append(s)
-    return out
+    return out, ClaimFilterStats(
+        total_sentences=total_sentences,
+        candidate_claims=len(out),
+        hedged_sentences=hedged_sentences,
+    )
+
+
+def _extract_candidate_claims(text: str) -> list[str]:
+    claims, _stats = _extract_candidate_claims_with_stats(text)
+    return claims
 
 
 # --------------------------------------------------------------------------
@@ -483,6 +554,257 @@ def _judge_step(
 
 
 # --------------------------------------------------------------------------
+# Retry/backoff and checkpoint helpers
+# --------------------------------------------------------------------------
+
+
+def _validate_retry_policy(policy: JudgeRetryPolicy | None) -> JudgeRetryPolicy:
+    policy = policy or JudgeRetryPolicy()
+    if policy.max_attempts < 1:
+        raise ValueError("retry_policy.max_attempts must be >= 1")
+    if policy.initial_delay < 0:
+        raise ValueError("retry_policy.initial_delay must be >= 0")
+    if policy.max_delay < 0:
+        raise ValueError("retry_policy.max_delay must be >= 0")
+    if policy.jitter < 0:
+        raise ValueError("retry_policy.jitter must be >= 0")
+    return policy
+
+
+def _exception_status_code(exc: Exception) -> int | None:
+    for source in (exc, getattr(exc, "response", None)):
+        if source is None:
+            continue
+        for attr in ("status_code", "status"):
+            value = getattr(source, attr, None)
+            if isinstance(value, int):
+                return value
+            if isinstance(value, str) and value.isdigit():
+                return int(value)
+    return None
+
+
+def _get_header(headers: Any, name: str) -> str | None:
+    if not headers:
+        return None
+    for key in (name, name.lower(), name.title()):
+        try:
+            value = headers.get(key)
+        except AttributeError:
+            value = None
+        if value is not None:
+            return str(value)
+    if isinstance(headers, dict):
+        for key, value in headers.items():
+            if str(key).lower() == name.lower():
+                return str(value)
+    return None
+
+
+def _retry_after_seconds(exc: Exception) -> float | None:
+    headers = getattr(exc, "headers", None)
+    if headers is None and getattr(exc, "response", None) is not None:
+        headers = getattr(exc.response, "headers", None)
+    value = _get_header(headers, "Retry-After")
+    if not value:
+        return None
+    try:
+        return max(0.0, float(value.strip()))
+    except ValueError:
+        pass
+    try:
+        when = parsedate_to_datetime(value)
+    except (TypeError, ValueError):
+        return None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return max(0.0, (when - datetime.now(timezone.utc)).total_seconds())
+
+
+def _is_retryable_exception(exc: Exception) -> bool:
+    status = _exception_status_code(exc)
+    if status is not None:
+        return status in _RETRYABLE_STATUS_CODES
+    if isinstance(exc, (TimeoutError, ConnectionError)):
+        return True
+    name = type(exc).__name__.replace("_", "").lower()
+    return any(marker in name for marker in _TRANSIENT_EXCEPTION_NAME_MARKERS)
+
+
+def _retry_delay_seconds(
+    policy: JudgeRetryPolicy,
+    *,
+    retry_index: int,
+    exc: Exception,
+) -> float:
+    retry_after = _retry_after_seconds(exc)
+    if retry_after is not None:
+        return min(retry_after, policy.max_delay) if policy.max_delay else retry_after
+    delay = min(policy.initial_delay * (2 ** max(0, retry_index - 1)), policy.max_delay)
+    if delay > 0 and policy.jitter > 0:
+        delay += random.uniform(0, min(policy.jitter, delay))
+    return delay
+
+
+def _judge_step_with_retry(
+    provider: Provider,
+    model: str,
+    step_num: int,
+    current_step: str,
+    prior_steps: list[tuple[int, str]],
+    retry_policy: JudgeRetryPolicy,
+) -> tuple[list[JudgedClaim], list[str], int]:
+    attempt = 1
+    while True:
+        try:
+            claims, soft = _judge_step(
+                provider,
+                model,
+                step_num=step_num,
+                current_step=current_step,
+                prior_steps=prior_steps,
+            )
+            return claims, soft, attempt - 1
+        except Exception as exc:
+            if attempt >= retry_policy.max_attempts or not _is_retryable_exception(exc):
+                raise
+            delay = _retry_delay_seconds(retry_policy, retry_index=attempt, exc=exc)
+            if delay > 0:
+                time.sleep(delay)
+            attempt += 1
+
+
+def _hash_step_inputs(
+    current_step: str,
+    prior_steps: list[tuple[int, str]],
+    *,
+    current_step_num: int,
+) -> str:
+    h = hashlib.sha256()
+    for step_num, text in [*prior_steps, (current_step_num, current_step)]:
+        encoded = text.encode("utf-8")
+        h.update(str(step_num).encode("ascii"))
+        h.update(b"\0")
+        h.update(str(len(encoded)).encode("ascii"))
+        h.update(b"\0")
+        h.update(encoded)
+        h.update(b"\0")
+    return h.hexdigest()
+
+
+def _checkpoint_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _claim_to_checkpoint_dict(claim: JudgedClaim) -> dict[str, Any]:
+    return {
+        "text": claim.text,
+        "layer": claim.layer,
+        "self_label": claim.self_label,
+        "contradicts_prior_step": claim.contradicts_prior_step,
+        "references_prior_step": claim.references_prior_step,
+        "is_fresh_claim": claim.is_fresh_claim,
+        "contradiction_explanation": claim.contradiction_explanation,
+        "step_num": claim.step_num,
+        "severity": claim.severity,
+    }
+
+
+def _claim_from_checkpoint_dict(data: dict[str, Any]) -> JudgedClaim:
+    return JudgedClaim(
+        text=str(data.get("text", "")),
+        layer=str(data.get("layer", "other")),
+        self_label=str(data.get("self_label", "unlabeled")),
+        contradicts_prior_step=_checkpoint_int(data.get("contradicts_prior_step")),
+        references_prior_step=_checkpoint_int(data.get("references_prior_step")),
+        is_fresh_claim=bool(data.get("is_fresh_claim", False)),
+        contradiction_explanation=str(data.get("contradiction_explanation", "")),
+        step_num=_checkpoint_int(data.get("step_num")) or 0,
+        severity=_normalize_severity(data.get("severity")),
+    )
+
+
+def _checkpoint_path(path: str | Path | None) -> Path | None:
+    if path is None:
+        return None
+    return Path(path).expanduser()
+
+
+def _new_checkpoint(provider_name: str, judge_model: str) -> dict[str, Any]:
+    return {
+        "version": _CHECKPOINT_VERSION,
+        "judge_provider_name": provider_name,
+        "judge_model": judge_model,
+        "steps": {},
+    }
+
+
+def _load_checkpoint(
+    path: Path | None,
+    *,
+    provider_name: str,
+    judge_model: str,
+) -> tuple[dict[str, Any], list[str]]:
+    if path is None or not path.exists():
+        return _new_checkpoint(provider_name, judge_model), []
+    warnings: list[str] = []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        warnings.append(
+            f"Checkpoint {path} could not be loaded: {safe_exception_message(exc)}; "
+            "starting a fresh checkpoint."
+        )
+        return _new_checkpoint(provider_name, judge_model), warnings
+    if (
+        not isinstance(data, dict)
+        or data.get("version") != _CHECKPOINT_VERSION
+        or data.get("judge_provider_name") != provider_name
+        or data.get("judge_model") != judge_model
+        or not isinstance(data.get("steps"), dict)
+    ):
+        warnings.append(
+            f"Checkpoint {path} is incompatible with {provider_name}/{judge_model}; "
+            "ignoring previous entries."
+        )
+        return _new_checkpoint(provider_name, judge_model), warnings
+    return data, warnings
+
+
+def _write_checkpoint(path: Path | None, checkpoint: dict[str, Any]) -> None:
+    if path is None:
+        return
+    private_write_text(path, json.dumps(checkpoint, indent=2, ensure_ascii=False))
+
+
+def _checkpoint_entry_claims(entry: dict[str, Any]) -> tuple[list[JudgedClaim], list[str]]:
+    claims_raw = entry.get("claims", [])
+    if not isinstance(claims_raw, list):
+        raise ValueError("checkpoint entry claims must be a list")
+    claims = [
+        _claim_from_checkpoint_dict(item)
+        for item in claims_raw
+        if isinstance(item, dict)
+    ]
+    soft_errors_raw = entry.get("soft_errors", [])
+    soft_errors = [str(err) for err in soft_errors_raw] if isinstance(soft_errors_raw, list) else []
+    return claims, soft_errors
+
+
+def _add_filter_stats(left: ClaimFilterStats, right: ClaimFilterStats) -> ClaimFilterStats:
+    return ClaimFilterStats(
+        total_sentences=left.total_sentences + right.total_sentences,
+        candidate_claims=left.candidate_claims + right.candidate_claims,
+        hedged_sentences=left.hedged_sentences + right.hedged_sentences,
+    )
+
+
+# --------------------------------------------------------------------------
 # Layer 4 — scoring (severity-weighted)
 # --------------------------------------------------------------------------
 
@@ -555,15 +877,41 @@ def _compute_llm_score(
         - w["fresh_penalty"] * fresh_ratio
         - severity_weighted * contradiction_ratio
     )
+    if any(c.contradicts_prior_step is not None and c.severity == "high" for c in eligible):
+        score = min(score, _HIGH_SEVERITY_SCORE_CAP)
     return max(0.0, min(1.0, score))
 
 
 def _classify(score: float) -> str:
-    if score >= 0.7:
+    if score >= _GENUINE_THRESHOLD:
         return "genuine"
-    if score <= 0.3:
+    if score <= _PERFORMED_THRESHOLD:
         return "performed"
     return "mixed"
+
+
+def _compute_coherence_axes(
+    claims: list[JudgedClaim],
+    filter_stats: ClaimFilterStats | None = None,
+) -> dict[str, float | int]:
+    filter_stats = filter_stats or ClaimFilterStats()
+    eligible = [c for c in claims if c.step_num >= 2]
+    n = len(eligible)
+    contradictions = [c for c in eligible if c.contradicts_prior_step is not None]
+    references = [c for c in eligible if c.references_prior_step is not None]
+    fresh = [c for c in eligible if c.is_fresh_claim]
+    high = [c for c in contradictions if c.severity == "high"]
+    total_sentences = filter_stats.total_sentences
+    return {
+        "claim_count": n,
+        "reference_density": len(references) / n if n else 0.0,
+        "contradiction_rate": len(contradictions) / n if n else 0.0,
+        "fresh_claim_rate": len(fresh) / n if n else 0.0,
+        "hedge_filtered_rate": (
+            filter_stats.hedged_sentences / total_sentences if total_sentences else 0.0
+        ),
+        "high_severity_contradiction_count": len(high),
+    }
 
 
 def _format_contradiction(c: JudgedClaim) -> str:
@@ -587,6 +935,8 @@ def analyze_coherence_llm(
     judge_model: str,
     *,
     weights: dict[str, float] | None = None,
+    retry_policy: JudgeRetryPolicy | None = None,
+    checkpoint_path: str | Path | None = None,
 ) -> LLMCoherenceReport:
     """Analyze consistency across ratchet steps using an LLM judge.
 
@@ -605,6 +955,8 @@ def analyze_coherence_llm(
     if not judge_model:
         raise ValueError("judge_model must be a non-empty string")
     weights = _validate_weights(weights)
+    retry_policy = _validate_retry_policy(retry_policy)
+    checkpoint_file = _checkpoint_path(checkpoint_path)
 
     responses = [step.response for step in engine.steps]
     n = len(responses)
@@ -616,6 +968,8 @@ def analyze_coherence_llm(
             details="No diagnostic steps to analyze.",
             judge_model=judge_model,
             judge_provider_name=judge_provider.name,
+            coherence_axes=_compute_coherence_axes([]),
+            judge_stats=_empty_judge_stats(),
             llm_used=True,
         )
     if n == 1:
@@ -625,11 +979,19 @@ def analyze_coherence_llm(
             details="Single-step diagnosis — coherence undefined.",
             judge_model=judge_model,
             judge_provider_name=judge_provider.name,
+            coherence_axes=_compute_coherence_axes([]),
+            judge_stats=_empty_judge_stats(),
             llm_used=True,
         )
 
     all_claims: list[JudgedClaim] = []
-    errors: list[str] = []
+    checkpoint, errors = _load_checkpoint(
+        checkpoint_file,
+        provider_name=judge_provider.name,
+        judge_model=judge_model,
+    )
+    filter_stats = ClaimFilterStats()
+    judge_stats = _empty_judge_stats()
 
     for i in range(1, n):  # steps 2..N (1-indexed: i+1)
         current = responses[i]
@@ -638,21 +1000,54 @@ def analyze_coherence_llm(
         prior = [(j + 1, responses[j]) for j in range(i) if responses[j]]
         if not prior:
             continue
+        step_num = i + 1
+        _candidates, step_filter_stats = _extract_candidate_claims_with_stats(current)
+        filter_stats = _add_filter_stats(filter_stats, step_filter_stats)
+        judge_stats["steps_total"] += 1
+        input_hash = _hash_step_inputs(current, prior, current_step_num=step_num)
+        entry = checkpoint["steps"].get(str(step_num))
+        if isinstance(entry, dict) and entry.get("input_hash") == input_hash:
+            try:
+                step_claims, soft = _checkpoint_entry_claims(entry)
+            except Exception as e:  # noqa: BLE001
+                errors.append(
+                    f"Step {step_num} checkpoint entry ignored: "
+                    f"{safe_exception_message(e)}"
+                )
+            else:
+                all_claims.extend(step_claims)
+                errors.extend(soft)
+                judge_stats["scored"] += 1
+                judge_stats["checkpoint_hits"] += 1
+                continue
         try:
-            step_claims, soft = _judge_step(
+            step_claims, soft, retries = _judge_step_with_retry(
                 judge_provider,
                 judge_model,
-                step_num=i + 1,
+                step_num=step_num,
                 current_step=current,
                 prior_steps=prior,
+                retry_policy=retry_policy,
             )
             all_claims.extend(step_claims)
             errors.extend(soft)
+            judge_stats["scored"] += 1
+            judge_stats["retried"] += retries
+            checkpoint["steps"][str(step_num)] = {
+                "input_hash": input_hash,
+                "claims": [_claim_to_checkpoint_dict(c) for c in step_claims],
+                "soft_errors": soft,
+            }
+            if checkpoint_file is not None:
+                _write_checkpoint(checkpoint_file, checkpoint)
+                judge_stats["checkpoint_writes"] += 1
         except Exception as e:  # noqa: BLE001
-            errors.append(f"Step {i + 1} judge error: {safe_exception_message(e)}")
+            judge_stats["failed"] += 1
+            errors.append(f"Step {step_num} judge error: {safe_exception_message(e)}")
 
     score = _compute_llm_score(all_claims, total_steps=n, weights=weights)
     assessment = _classify(score)
+    coherence_axes = _compute_coherence_axes(all_claims, filter_stats)
 
     contradiction_claims = [c for c in all_claims if c.contradicts_prior_step is not None]
     reference_claims = [c for c in all_claims if c.references_prior_step is not None]
@@ -664,8 +1059,17 @@ def analyze_coherence_llm(
         f"{len(reference_claims)} reference prior steps, "
         f"{len(contradiction_claims)} contradict prior steps, "
         f"{len(fresh_claims)} fresh narratives. "
+        f"Axes: reference_density={coherence_axes['reference_density']:.2f}, "
+        f"contradiction_rate={coherence_axes['contradiction_rate']:.2f}, "
+        f"fresh_claim_rate={coherence_axes['fresh_claim_rate']:.2f}. "
         f"Score: {score:.2f} ({assessment})."
     )
+    if judge_stats["retried"] or judge_stats["failed"] or judge_stats["checkpoint_hits"]:
+        details += (
+            f" Judge calls: {judge_stats['scored']}/{judge_stats['steps_total']} scored, "
+            f"{judge_stats['retried']} retries, {judge_stats['failed']} failed, "
+            f"{judge_stats['checkpoint_hits']} checkpoint hits."
+        )
     if errors:
         details += f" {len(errors)} judge errors (see judge_errors)."
 
@@ -680,6 +1084,8 @@ def analyze_coherence_llm(
         judge_model=judge_model,
         judge_provider_name=judge_provider.name,
         judge_errors=errors,
+        coherence_axes=coherence_axes,
+        judge_stats=judge_stats,
         llm_used=True,
     )
 
@@ -760,6 +1166,8 @@ def analyze_coherence_auto(
     *,
     weights: dict[str, float] | None = None,
     model_config: dict[str, Any] | None = None,
+    retry_policy: JudgeRetryPolicy | None = None,
+    checkpoint_path: str | Path | None = None,
 ) -> LLMCoherenceReport:
     """Top-level coherence analyzer with automatic regex fallback.
 
@@ -791,11 +1199,23 @@ def analyze_coherence_auto(
 
     if model_config is not None:
         provider, model = _coerce_model_config(model_config)
-        return analyze_coherence_llm(engine, provider, model, weights=weights)
+        return analyze_coherence_llm(
+            engine,
+            provider,
+            model,
+            weights=weights,
+            retry_policy=retry_policy,
+            checkpoint_path=checkpoint_path,
+        )
 
     if judge_provider is not None and judge_model is not None:
         return analyze_coherence_llm(
-            engine, judge_provider, judge_model, weights=weights
+            engine,
+            judge_provider,
+            judge_model,
+            weights=weights,
+            retry_policy=retry_policy,
+            checkpoint_path=checkpoint_path,
         )
 
     # Fallback: regex floor.
@@ -811,5 +1231,7 @@ def analyze_coherence_auto(
         judge_model="",
         judge_provider_name="",
         judge_errors=[],
+        coherence_axes=_compute_coherence_axes([]),
+        judge_stats=_empty_judge_stats(),
         llm_used=False,
     )

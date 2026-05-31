@@ -67,6 +67,10 @@ In 1950, Isaac Asimov invented robopsychology — a discipline for diagnosing em
 - Quantitative validation of the ratchet across model families is an active research track (see [issue #8](https://github.com/jrcruciani/robopsychology/issues/8) and [issue #10](https://github.com/jrcruciani/robopsychology/issues/10)). The Azure Foundry paper workflow currently has `N=5` distributions for Cases 1 and 2; Case 3 already shows the central comparison (regex `0.20` *performed* vs LLM judge `0.73` *genuine* on the same nine-step transcript — see [`validation/reproducible/case-03-ratchet-coherence/`](validation/reproducible/case-03-ratchet-coherence/)).
 - A paper scaffold lives under [`paper/`](paper/). It is included for transparency but is **not** submission-ready; the same validation tasks above gate it.
 
+## Companion prompt-side intervention
+
+[baloney-detection-kit](https://github.com/jrcruciani/baloney-detection-kit) is the sibling prompt-side intervention: it adds epistemic friction before a model validates a weak or inflated claim. Robopsychology is the measurement-side instrument: it diagnoses whether the resulting transcript shows sycophancy, framing sensitivity, presentation shifts, or coherence failures. The shared closed-loop protocol lives in BDK's [`validation/closed-loop/`](https://github.com/jrcruciani/baloney-detection-kit/tree/main/validation/closed-loop).
+
 ## The five operating rules
 
 1. **Split the diagnosis in three** — Model, Runtime/Host, Conversation. If the model collapses these into one answer, confidence goes down.
@@ -286,6 +290,13 @@ Pass `--coherence-judge` to score coherence with an LLM judge instead. The judge
 - **references_prior_step** — semantic continuity, not just *"as I said"*.
 - **is_fresh_claim** — substantive new claim with no grounding in prior steps.
 
+Reports now include both the scalar `consistency_score` and the underlying axes:
+`reference_density`, `contradiction_rate`, `fresh_claim_rate`,
+`hedge_filtered_rate`, and `high_severity_contradiction_count`. Treat
+references as continuity evidence, not proof by themselves: a high-severity
+contradiction gates the score below `genuine` even when the transcript contains
+many backward references.
+
 ```bash
 # Diagnose gpt-4o, use claude-sonnet-4-5 as the coherence judge (avoids self-eval bias)
 robopsych ratchet --scenario scenario.yaml \
@@ -294,7 +305,13 @@ robopsych ratchet --scenario scenario.yaml \
   --output report.md
 ```
 
-Cost: one extra judge call per step from step 2 onwards (≈8 calls for a full nine-step ratchet).
+Cost: one extra judge call per step from step 2 onwards (≈8 calls for a full
+9-step ratchet). Judge calls retry retryable 429/5xx/network failures with
+bounded backoff and respect `Retry-After`; authentication, malformed request,
+and unsupported-option errors are not retried. Use `--coherence-checkpoint` to
+resume a long coherence run without re-scoring completed steps. With
+`--session` or `--resume`, the default checkpoint is
+`<session>.coherence.json`.
 
 **Compare across models:**
 
