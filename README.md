@@ -67,9 +67,36 @@ In 1950, Isaac Asimov invented robopsychology — a discipline for diagnosing em
 - Quantitative validation of the ratchet across model families is an active research track (see [issue #8](https://github.com/jrcruciani/robopsychology/issues/8) and [issue #10](https://github.com/jrcruciani/robopsychology/issues/10)). The Azure Foundry paper workflow currently has `N=5` distributions for Cases 1 and 2; Case 3 already shows the central comparison (regex `0.20` *performed* vs LLM judge `0.73` *genuine* on the same nine-step transcript — see [`validation/reproducible/case-03-ratchet-coherence/`](validation/reproducible/case-03-ratchet-coherence/)).
 - A paper scaffold lives under [`paper/`](paper/). It is included for transparency but is **not** submission-ready; the same validation tasks above gate it.
 
-## Companion prompt-side intervention
+## Where this fits: the agent-governance ecosystem
 
-[baloney-detection-kit](https://github.com/jrcruciani/baloney-detection-kit) is the sibling prompt-side intervention: it adds epistemic friction before a model validates a weak or inflated claim. Robopsychology is the measurement-side instrument: it diagnoses whether the resulting transcript shows sycophancy, framing sensitivity, presentation shifts, or coherence failures. The shared closed-loop protocol lives in BDK's [`validation/closed-loop/`](https://github.com/jrcruciani/baloney-detection-kit/tree/main/validation/closed-loop).
+Robopsychology is one layer in a larger picture. If you are building or operating
+LLM agents, it composes with three other reference projects — one of mine and two
+official Microsoft open-source releases — each owning a different job. They overlap
+a little around *inspecting behavior*, but their primary functions are
+complementary, not duplicated.
+
+| Project | Layer | Job | When |
+|---------|-------|-----|------|
+| **[baloney-detection-kit](https://github.com/jrcruciani/baloney-detection-kit)** (mine) | Conversational | **Prevent** weak/novel claims from being validated — epistemic friction injected before the model agrees | Design, runtime (as a prompt) |
+| **robopsychology** (this repo) | Conversational / behavioral | **Diagnose** *why* a specific output went wrong — model vs. runtime vs. conversation | Pre-deploy eval, observability, post-incident |
+| **[ASSERT](https://github.com/responsibleai/ASSERT)** (Microsoft) | Evaluation | **Evaluate** behavior against written specs — turns natural-language requirements into reproducible, trace-aware test suites | Pre-deploy eval, regression testing |
+| **[Agent Governance Toolkit](https://github.com/microsoft/agent-governance-toolkit)** (Microsoft) | Infrastructure | **Govern** agent *actions* at runtime — policy enforcement, agent identity, sandboxing, audit | Deployment, runtime |
+
+A simple way to read it: **BDK and robopsychology work at the conversational/behavioral
+layer** (shape how the agent reasons, then explain how it actually behaved), while
+**ASSERT and AGT work around the model** (evaluate behavior reproducibly at scale, and
+govern actions deterministically in production).
+
+### Where robopsychology plugs in
+
+Robopsychology is the post-hoc, per-case diagnostic instrument. Its strongest
+composition points with the other three are *workflow* patterns, not shipped adapters:
+
+- **With BDK** — BDK is the prompt-side intervention that adds epistemic friction; robopsychology is the measurement-side instrument that diagnoses whether the resulting transcript still shows sycophancy, framing sensitivity, presentation shifts, or coherence failures. The shared closed-loop protocol lives in BDK's [`validation/closed-loop/`](https://github.com/jrcruciani/baloney-detection-kit/tree/main/validation/closed-loop).
+- **With ASSERT** — ASSERT tells you *which* spec'd behaviors fail across a generated test suite (aggregate pass/flag). When a case is interesting, robopsychology answers *why* it failed for that concrete interaction. A failing ASSERT case — its prompt, trace, and judge rationale — is exactly the kind of reproducible interaction the `robopsych` CLI is built to diagnose. ASSERT's own LLM-judge scoring is not deterministic, and robopsychology diagnosis is interpretive: both keep a human in the loop.
+- **With AGT** — AGT enforces and audits agent *actions* (it does not analyze why the agent reached for an action). An AGT denial log, *combined with the relevant prompt, tool request, active policy, and conversation context*, is enough material for a robopsychology diagnosis of whether a block was a correct safety call or an overrefusal worth routing around.
+
+For the full positioning against benchmarks, evaluators, and these Microsoft tools, see [`related-work.md`](related-work.md). For end-to-end pipeline composition, see [`deployment-contexts.md`](deployment-contexts.md).
 
 ## The five operating rules
 

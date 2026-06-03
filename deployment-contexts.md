@@ -123,6 +123,20 @@ In regulated industries (healthcare, finance, public sector, energy) the lifecyc
 
 The third item is the most often missing. Auditors frequently ask "why did the AI do this on date X for user Y?" and "the model scored 0.92 on safety in CI" is not an answer to that question. A robopsychology report is.
 
+### Pattern D — End-to-end enterprise agent pipeline
+
+For teams shipping autonomous agents to production, robopsychology slots into a wider
+stack alongside one sibling project of mine and the two Microsoft open-source tools.
+These are conceptual composition patterns across the lifecycle, not pre-built
+integrations:
+
+1. **Design** — capture the behaviors that matter. Add [baloney-detection-kit](https://github.com/jrcruciani/baloney-detection-kit) as a behavioral requirement (epistemic friction before validating novel claims) and formalize requirements as specs for **[ASSERT](https://github.com/responsibleai/ASSERT)**.
+2. **Pre-deploy evaluation** — **ASSERT** generates and scores test cases from those specs; when an interesting case fails, **robopsychology** diagnoses the root cause (model / runtime / conversation) on that concrete interaction.
+3. **Deployment & runtime** — **[Agent Governance Toolkit](https://github.com/microsoft/agent-governance-toolkit)** enforces and audits agent *actions* (tool calls, queries, delegations) against policy. BDK's prompt can ride inside the governed agent's system prompt as a conversational layer — advisory friction underneath AGT's hard enforcement.
+4. **Observability & incident response** — an AGT denial log plus its surrounding context feeds **robopsychology** to tell a correct block from an overrefusal; **ASSERT** reruns as a regression gate after any fix.
+
+Each tool keeps its own job: BDK prevents, robopsychology diagnoses, ASSERT measures, AGT governs. None of them is automatic adjudication — human review stays in the loop, especially for the qualitative diagnosis robopsychology produces.
+
 ---
 
 ## How this reframes the eval landscape
@@ -131,12 +145,14 @@ A common framing is "evaluators vs. diagnostics" — as if they competed. They d
 
 | Lifecycle stage | Class | Typical tool |
 |-----------------|-------|--------------|
-| Pre-deployment QA | Evaluator | Foundry RAI evals, Promptfoo, DeepEval, Ragas, Inspect AI |
+| Spec → eval generation | Evaluator (spec-driven) | [ASSERT](https://github.com/responsibleai/ASSERT) |
+| Pre-deployment QA | Evaluator | Foundry RAI evals, [ASSERT](https://github.com/responsibleai/ASSERT), Promptfoo, DeepEval, Ragas, Inspect AI |
 | Continuous monitoring | Evaluator (sampling production traffic) | Same as above, in shadow mode |
 | Incident response | Diagnostic | **robopsychology** |
 | Behavior change at inference | Intervention | System prompt, [baloney-detection-kit](https://github.com/jrcruciani/baloney-detection-kit), constitutional rules, RAG with citations |
 | Behavior change at training | Intervention (training-time) | RLHF, DPO, fine-tuning |
-| Audit / explainability | Diagnostic + documentation | **robopsychology** report + model card |
+| Runtime action governance | Enforcement | [Agent Governance Toolkit](https://github.com/microsoft/agent-governance-toolkit) |
+| Audit / explainability | Diagnostic + documentation | **robopsychology** report + model card; [AGT](https://github.com/microsoft/agent-governance-toolkit) audit trail |
 
 The interesting part is the gap between "incident response" and "behavior change". Many teams jump straight from incident to intervention without diagnosing first, and end up patching symptoms instead of causes. Diagnostic toolkits exist to close that gap.
 
