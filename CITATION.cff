@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use this framework or its reference CLI, please cite the essay as the canonical source of the method, and the CLI release for the implementation."
+message: "If you use this framework, cite the essay as the canonical source of the method. Cite the CLI release only when you depend on the reference implementation."
 title: "Robopsychology: A Framework for Behavioral Diagnostics of AI Systems"
 abstract: >-
   Robopsychology is a framework for diagnosing the behavior of large language
@@ -7,9 +7,9 @@ abstract: >-
   layers — model tendencies, runtime/host pressure, and conversation effects —
   and offers a sixteen-prompt toolkit, a five-rule operating protocol, and a
   nine-step diagnostic ratchet that makes performed transparency expensive and
-  genuine transparency cheap. This repository hosts the method documents, the
-  reference CLI implementation (`robopsych`), reproducible validation cases,
-  and a paper scaffold.
+  genuine transparency cheap. This repository hosts the framework documents,
+  modular prompt cards, no-CLI templates, reproducible validation cases, a
+  paper scaffold, and the `robopsych` reference CLI implementation.
 type: software
 authors:
   - family-names: Cruciani

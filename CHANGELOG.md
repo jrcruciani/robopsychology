@@ -8,6 +8,30 @@ implementation and tracks the framework, not the other way around.
 
 ## [Unreleased]
 
+### Framework
+
+- Reorganize the repository around the framework-first structure:
+  `framework/` for the method, taxonomy, positioning, falsifiability, and
+  versioning; `prompts/` for prompt cards and a human-facing prompt catalog;
+  `templates/` for no-CLI diagnostic worksheets.
+- Add a manual diagnosis workflow so the expected path is usable without
+  installing the reference CLI.
+- Add explicit falsifiability guidance to keep model self-reports framed as
+  hypotheses rather than confessions.
+
+### Prompt toolkit
+
+- Add one operational prompt card for each of the 16 primary diagnostic prompts,
+  including when to use it, when not to use it, inputs, expected output,
+  contamination risks, examples, and escalation path.
+- Mirror the prompt catalog at `prompts/prompts.yaml` for framework users while
+  keeping the packaged CLI copy under `src/robopsych/data/prompts.yaml`.
+
+### Reference CLI
+
+- Reword package and CLI descriptions so `robopsych` is presented as a reference
+  implementation of the framework, not the product center.
+
 ## [5.0.3] - 2026-05-26
 
 - Bump package version to 5.0.3 so the GitHub release can actually

@@ -14,9 +14,9 @@ workshop preprint (repository issue
 
 This is a **first scaffold**, not a submission-ready draft. Sections
 are seeded with content derived from the repository's existing
-markdown documents (`method.md`, `taxonomy.md`, `related-work.md`,
-`validation/reproducible/*/analysis.md`, `README.md`) so the structure
-is in place and reviewers can see the argument flow. Places that
+markdown documents (`framework/method.md`, `framework/taxonomy.md`,
+`framework/related-work.md`, `validation/reproducible/*/analysis.md`,
+`README.md`) so the structure is in place and reviewers can see the argument flow. Places that
 require original authorial writing or numbers from runs that haven't
 been executed yet are flagged with `\todo{...}` blocks inside the
 source.

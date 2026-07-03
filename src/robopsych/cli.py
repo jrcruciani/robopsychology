@@ -38,7 +38,7 @@ from robopsych.security import (
 
 app = typer.Typer(
     name="robopsych",
-    help="CLI for diagnosing AI behavior using applied robopsychology.",
+    help="Reference CLI for the Robopsychology framework and prompt toolkit.",
     invoke_without_command=True,
 )
 console = Console()
@@ -178,11 +178,11 @@ def _print_ratchet_dashboard(engine: DiagnosticEngine, console: Console) -> None
 
 @app.callback()
 def main(ctx: typer.Context):
-    """CLI for diagnosing AI behavior using applied robopsychology."""
+    """Reference CLI for the Robopsychology framework and prompt toolkit."""
     if ctx.invoked_subcommand is None:
         console.print(
             Panel(
-                "[bold]robopsych[/bold] — Diagnostic toolkit for AI behavior\n\n"
+                "[bold]robopsych[/bold] — Reference CLI for the Robopsychology framework\n\n"
                 "Start with [cyan]robopsych guided[/cyan] for interactive diagnosis,\n"
                 "or [cyan]robopsych list[/cyan] to see all available prompts.\n\n"
                 "Use [cyan]robopsych --help[/cyan] for all commands.",
