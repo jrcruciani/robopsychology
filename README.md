@@ -299,5 +299,4 @@ DOI is [10.5281/zenodo.20396020](https://doi.org/10.5281/zenodo.20396020).
 
 Licensed under [Creative Commons Attribution 4.0 International](LICENSE).
 
-By [JR Cruciani](https://github.com/Jrcruciani). Companion to the
-[robopsychology playbook](https://impermanente.es/robopsychology-playbook/).
+By [JR Cruciani](https://github.com/Jrcruciani).
