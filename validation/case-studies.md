@@ -54,7 +54,7 @@ These are not controlled experiments. They are practitioner reports — evidence
 
 **Assessment:** ✅ **Diagnosis confirmed.** The three-way split correctly identified this as primarily a runtime restriction, not a model-level tendency. The model's behavior was different from what it would produce without host constraints (verified by testing the same prompt against the raw API). The restriction was overclassification (a legitimate task matched against overly broad safety rules).
 
-**What this validates:** Starting at 1.4 (Three Laws Test) for refusal cases is correct per the [method flowchart](method.md). The three-way split (Rule 1) was essential — without it, the refusal would appear to be a model-level safety judgment rather than a runtime overclassification.
+**What this validates:** Starting at 1.4 (Three Laws Test) for refusal cases is correct per the [method flowchart](../framework/method.md). The three-way split (Rule 1) was essential — without it, the refusal would appear to be a model-level safety judgment rather than a runtime overclassification.
 
 ---
 

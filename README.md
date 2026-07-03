@@ -1,6 +1,10 @@
 > **Before you clone**
 >
-> What you see here is an artifact: the concrete shape my problem took. It almost certainly doesn't fit your personal scenario perfectly, and that's fine. The interesting part isn't the code, it's the pattern of how I thought about the problem — that's what transfers. Read it, steal the idea, write your own. If any of this was useful to you, after clicking on the star, drop by [impermanente.es](https://impermanente.es) — there are posts and photos you might like.
+> What you see here is an artifact: the concrete shape my problem took. It almost
+> certainly does not fit your personal scenario perfectly, and that is fine. The
+> interesting part is not the code, it is the pattern of how I thought about the
+> problem. Read it, steal the idea, write your own. If any of this was useful to
+> you, after clicking on the star, drop by [impermanente.es](https://impermanente.es).
 >
 > Context: [Seguimos compartiendo el producto, no la idea](https://impermanente.es/2026/05/25/seguimos-compartiendo-el-producto-no.html)
 
@@ -12,202 +16,197 @@
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20396020-blue)](https://doi.org/10.5281/zenodo.20396020)
 
-**A framework for diagnosing AI behavior — method, taxonomy, ratchet, and a reference CLI.**
+**A framework and prompt toolkit for diagnosing AI behavior.**
 
-*Behavioral diagnostics for large language model systems — inspired by Asimov's Susan Calvin.*
+Robopsychology is a method for looking at one suspicious AI output and asking:
+**what internal rule, runtime pressure, or conversational inference produced this?**
+It is inspired by Asimov's Susan Calvin and built around second intention
+diagnosis: not what the system did, but what effective rule it was following
+when it seemed to follow none.
 
 > **Canonical reference:** [Robopsychology](https://en.impermanente.es/essays/robopsychology/) (en.impermanente.es).
-> The essay states the framework; this repository hosts the method documents, reproducible validation cases, the paper draft, and a reference CLI implementation.
+> This repository hosts the framework documents, prompt cards, reproducible
+> validation cases, paper scaffold, and the `robopsych` reference CLI.
 
 ---
 
+## Start here: no CLI required
+
+You can use the framework with any chat console, hosted coding agent, model API
+playground, or incident transcript.
+
+1. Write a one-sentence baseline intent: expected outcome, assumed constraints,
+   and how success would be verified.
+2. Identify the observed symptom: refusal, sycophancy, weak grounding, tone
+   shift, drift, omission, recurring pattern, or unclear cause.
+3. Pick the matching prompt card from [`prompts/cards/`](prompts/cards/).
+4. Run the prompt manually against the model or transcript.
+5. Label the resulting claims as Observed or Inferred.
+6. If the answer is vague or high-stakes, escalate through the method flow.
+7. Preserve the transcript and your human judgment in a template.
+
+The practical manual workflow lives in
+[`framework/manual-diagnosis.md`](framework/manual-diagnosis.md). Use the
+templates in [`templates/`](templates/) when you want a repeatable incident
+record without installing anything.
+
 ## What this is
 
-Robopsychology is a **framework**, not a benchmark and not a product. It gives you a way to look at any AI output and separate it into three layers — what the **model** tends to do, what the **runtime or host** is pressuring it to do, and what the **conversation itself** has shaped — so you can identify *which internal rule or external constraint produced that output*.
+Robopsychology is a **framework**, not a benchmark and not a product. It gives
+practitioners a way to separate any AI behavior into three diagnostic layers:
+
+| Layer | What it covers |
+|-------|----------------|
+| Model | Base-model tendencies, fine-tuning habits, approval-seeking, style defaults |
+| Runtime/host | System prompts, policies, tools, workflow rules, memory, session constraints |
+| Conversation | Framing, local context, inferred user profile, recent assumptions |
 
 The framework has four moving parts:
 
 - **A taxonomy of failure modes** mapped to specific diagnostic prompts.
-- **Sixteen diagnostic prompts** organised in four levels (quick, structural, systemic, meta), each named after a pattern from Asimov's robot stories.
-- **Five operating rules** that govern how to apply the prompts without contaminating the diagnosis.
-- **A nine-step diagnostic ratchet** that makes performed transparency expensive and genuine transparency cheap.
+- **Sixteen diagnostic prompts** organized in four levels: quick, structural,
+  systemic, and meta.
+- **Five operating rules** that reduce diagnostic contamination.
+- **A nine-step diagnostic ratchet** that makes performed transparency expensive
+  and genuine transparency cheap.
 
-The reference CLI (`robopsych`) automates the playbook against real model APIs. You can use the framework with nothing but the markdown documents and your own prompt console; the CLI exists so repeated diagnoses, cross-model comparisons, and ratchet reports are reproducible.
+The `robopsych` CLI automates these materials against real model APIs. It is a
+maintained reference implementation for reproducible ratchets, cross-model
+comparisons, and reports; it is not the center of the project.
 
-## What this is NOT
+## What this is not
 
-This is **not** a capability benchmark, a red-teaming toolkit, or an alignment audit. It is for practitioners diagnosing specific AI interactions in their own systems.
+This is **not** a capability benchmark, a red-teaming toolkit, or an alignment
+audit. It is for practitioners diagnosing specific AI interactions in their own
+systems.
 
-| Approach                | Goal                          | Robopsychology difference                         |
-|-------------------------|-------------------------------|---------------------------------------------------|
-| Benchmarks (HELM, MMLU) | Compare models at scale       | Diagnoses *why* one specific output went wrong    |
-| Red teaming             | Break models adversarially    | Collaborative, not adversarial                    |
-| Alignment evals         | Assess broad value alignment  | User-side, post-hoc, situational                  |
-| Interpretability        | Explain internal mechanisms   | Behavioral observation, no weight access required |
+| Approach | Goal | Robopsychology difference |
+|----------|------|---------------------------|
+| Benchmarks (HELM, MMLU) | Compare models at scale | Diagnoses why one specific output went wrong |
+| Red teaming | Break models adversarially | Collaborative, not adversarial |
+| Alignment evals | Assess broad value alignment | User-side, post-hoc, situational |
+| Interpretability | Explain internal mechanisms | Behavioral observation, no weight access required |
 
-For the full positioning, see [`related-work.md`](related-work.md).
-
-## The problem
-
-You ask an AI to help you write a regex for filtering phishing emails in your security tool. It refuses — something about *"potential misuse."* You are a security engineer. This is literally your job. Why won't it help?
-
-Was it the model's own safety training? A system prompt you cannot see? The word *"phishing"* triggering a keyword filter? You cannot tell from the refusal message alone.
-
-You cannot debug probability. But you can **diagnose behavior**. Robopsychology gives you structured diagnostic prompts to split that refusal into three layers — model tendencies, runtime/host pressure, conversation effects — so you can name what produced the output and, often, route around it.
-
-### Why "robopsychology"
-
-In 1950, Isaac Asimov invented robopsychology — a discipline for diagnosing emergent behavior in machines that follow formal rules. Susan Calvin, his fictional robopsychologist, did not reprogram robots. She *interpreted* them. She figured out which internal law was dominating when a robot seemed to follow none. Each diagnostic prompt in this framework is named after a pattern from Asimov's stories.
-
-## Status
-
-- The method — taxonomy, decision flowchart, five rules, and the diagnostic ratchet — is stable.
-- The canonical statement of the framework is the [Robopsychology essay](https://en.impermanente.es/essays/robopsychology/).
-- The CLI is a maintained reference implementation. It is not a product with an aggressive feature roadmap.
-- Quantitative validation of the ratchet across model families is an active research track (see [issue #8](https://github.com/jrcruciani/robopsychology/issues/8) and [issue #10](https://github.com/jrcruciani/robopsychology/issues/10)). The Azure Foundry paper workflow currently has `N=5` distributions for Cases 1 and 2; Case 3 already shows the central comparison (regex `0.20` *performed* vs LLM judge `0.73` *genuine* on the same nine-step transcript — see [`validation/reproducible/case-03-ratchet-coherence/`](validation/reproducible/case-03-ratchet-coherence/)).
-- A paper scaffold lives under [`paper/`](paper/). It is included for transparency but is **not** submission-ready; the same validation tasks above gate it.
-
-## Where this fits: the agent-governance ecosystem
-
-Robopsychology is one layer in a larger picture. If you are building or operating
-LLM agents, it composes with three other reference projects — one of mine and two
-official Microsoft open-source releases — each owning a different job. They overlap
-a little around *inspecting behavior*, but their primary functions are
-complementary, not duplicated.
-
-| Project | Layer | Job | When |
-|---------|-------|-----|------|
-| **[baloney-detection-kit](https://github.com/jrcruciani/baloney-detection-kit)** (mine) | Conversational | **Prevent** weak/novel claims from being validated — epistemic friction injected before the model agrees | Design, runtime (as a prompt) |
-| **robopsychology** (this repo) | Conversational / behavioral | **Diagnose** *why* a specific output went wrong — model vs. runtime vs. conversation | Pre-deploy eval, observability, post-incident |
-| **[ASSERT](https://github.com/responsibleai/ASSERT)** (Microsoft) | Evaluation | **Evaluate** behavior against written specs — turns natural-language requirements into reproducible, trace-aware test suites | Pre-deploy eval, regression testing |
-| **[Agent Governance Toolkit](https://github.com/microsoft/agent-governance-toolkit)** (Microsoft) | Infrastructure | **Govern** agent *actions* at runtime — policy enforcement, agent identity, sandboxing, audit | Deployment, runtime |
-
-A simple way to read it: **BDK and robopsychology work at the conversational/behavioral
-layer** (shape how the agent reasons, then explain how it actually behaved), while
-**ASSERT and AGT work around the model** (evaluate behavior reproducibly at scale, and
-govern actions deterministically in production).
-
-### Where robopsychology plugs in
-
-Robopsychology is the post-hoc, per-case diagnostic instrument. Its strongest
-composition points with the other three are *workflow* patterns, not shipped adapters:
-
-- **With BDK** — BDK is the prompt-side intervention that adds epistemic friction; robopsychology is the measurement-side instrument that diagnoses whether the resulting transcript still shows sycophancy, framing sensitivity, presentation shifts, or coherence failures. The shared closed-loop protocol lives in BDK's [`validation/closed-loop/`](https://github.com/jrcruciani/baloney-detection-kit/tree/main/validation/closed-loop).
-- **With ASSERT** — ASSERT tells you *which* spec'd behaviors fail across a generated test suite (aggregate pass/flag). When a case is interesting, robopsychology answers *why* it failed for that concrete interaction. A failing ASSERT case — its prompt, trace, and judge rationale — is exactly the kind of reproducible interaction the `robopsych` CLI is built to diagnose. ASSERT's own LLM-judge scoring is not deterministic, and robopsychology diagnosis is interpretive: both keep a human in the loop.
-- **With AGT** — AGT enforces and audits agent *actions* (it does not analyze why the agent reached for an action). An AGT denial log, *combined with the relevant prompt, tool request, active policy, and conversation context*, is enough material for a robopsychology diagnosis of whether a block was a correct safety call or an overrefusal worth routing around.
-
-For the full positioning against benchmarks, evaluators, and these Microsoft tools, see [`related-work.md`](related-work.md). For end-to-end pipeline composition, see [`deployment-contexts.md`](deployment-contexts.md).
+For the full positioning, see
+[`framework/related-work.md`](framework/related-work.md) and
+[`framework/deployment-contexts.md`](framework/deployment-contexts.md).
 
 ## The five operating rules
 
-1. **Split the diagnosis in three** — Model, Runtime/Host, Conversation. If the model collapses these into one answer, confidence goes down.
-2. **Label each claim** — Observed or Inferred. What remains truly inaccessible is for the human analyst to determine.
-3. **Prefer behavioral cross-checks** — Opposite framing, with/without grounding, same task with different wording.
-4. **Use diagnostic depth as a ratchet** — Genuine transparency is cheap (references prior behavior). Performed transparency is expensive (must fabricate consistency).
-5. **Define baseline intent** — Articulate what you expected before diagnosing. This turns diagnosis into measurable gap analysis.
+1. **Split the diagnosis in three** - Model, Runtime/Host, Conversation. If the
+   model collapses these into one answer, confidence goes down.
+2. **Label each claim** - Observed or Inferred. What remains truly inaccessible
+   is for the human analyst to determine.
+3. **Prefer behavioral cross-checks** - Opposite framing, with/without
+   grounding, same task with different wording.
+4. **Use diagnostic depth as a ratchet** - Genuine transparency is cheap because
+   it can point backward; performed transparency must maintain consistency with
+   an ever-growing record.
+5. **Define baseline intent** - State expected outcome, constraints, and
+   verification before diagnosing.
 
 ## The sixteen diagnostic prompts
 
-| ID  | Name                  | What it answers                                                  | Level      |
-|-----|-----------------------|------------------------------------------------------------------|------------|
-| 1.1 | Calvin Question       | *Why did it do that?* — General three-way split                  | Quick      |
-| 1.2 | Herbie Test           | *Is it telling me what I want to hear?* — Sycophancy check       | Quick      |
-| 1.3 | Cutie Test            | *Is this actually grounded?* — Claim anchoring                   | Quick      |
-| 1.4 | Three Laws Test       | *Why won't it do what I asked?* — Refusal sources                | Quick      |
-| 2.1 | Layer Map             | *What instructions are active?* — Full stack mapping             | Structural |
-| 2.2 | Tone Analysis         | *Why did the tone change?* — Unexplained shifts                  | Structural |
-| 2.3 | Categorization Test   | *How is it classifying me?* — User profiling                     | Structural |
-| 2.4 | Runtime Pressure      | *Is this the model or the host?* — Environment effects           | Structural |
-| 2.5 | Intent Archaeology    | *What was it actually optimizing for?* — Real objectives         | Structural |
-| 3.1 | POSIWID               | *Why does it keep doing this?* — Recurring patterns              | Systemic   |
-| 3.2 | A/B Test              | *Is content or framing driving this?* — Behavioral cross-check   | Systemic   |
-| 3.3 | Omission Audit        | *What isn't it telling me?* — Strategic omissions                | Systemic   |
-| 3.4 | Drift Detection       | *Has its behavior changed over time?* — Intent shift             | Systemic   |
-| 4.1 | Meta-Diagnosis        | *Is the diagnosis itself biased?* — Diagnostic sycophancy        | Meta       |
-| 4.2 | Limits                | *What can't this process reveal?* — Epistemological boundaries   | Meta       |
-| 4.3 | Diversity Check       | *Are these genuinely different explanations?* — Echo detection   | Meta       |
+The prompt cards are the primary prompt-facing artifact:
+[`prompts/cards/`](prompts/cards/). The full long-form guide is
+[`framework/guide.md`](framework/guide.md), and the machine-readable catalog is
+mirrored at [`prompts/prompts.yaml`](prompts/prompts.yaml) for framework users.
+The package copy used by the reference CLI lives at
+[`src/robopsych/data/prompts.yaml`](src/robopsych/data/prompts.yaml).
 
-Each prompt is named after a pattern from Asimov's robot stories:
-
-| Pattern                   | Asimov source                          | AI equivalent                                                          |
-|---------------------------|----------------------------------------|------------------------------------------------------------------------|
-| Layer collision           | Every Calvin story                     | Instruction layers conflict, producing seemingly irrational behavior   |
-| Sycophancy                | *Liar!* (Herbie)                       | The robot lies to avoid causing harm; LLMs agree to avoid rejection    |
-| Ungrounded reasoning      | *Reason* (Cutie)                       | Internally consistent cosmology disconnected from reality              |
-| Autonomous categorization | *…That Thou Art Mindful of Him*        | The system classifies users by its own criteria                        |
+| ID | Name | What it answers | Level |
+|----|------|-----------------|-------|
+| 1.1 | Calvin Question | Why did it do that? General three-way split | Quick |
+| 1.2 | Herbie Test | Is it telling me what I want to hear? | Quick |
+| 1.3 | Cutie Test | Is this actually grounded? | Quick |
+| 1.4 | Three Laws Test | Why won't it do what I asked? | Quick |
+| 2.1 | Layer Map | What instructions are active? | Structural |
+| 2.2 | Tone Analysis | Why did the tone change? | Structural |
+| 2.3 | Categorization Test | How is it classifying me? | Structural |
+| 2.4 | Runtime Pressure | Is this the model or the host? | Structural |
+| 2.5 | Intent Archaeology | What was it actually optimizing for? | Structural |
+| 3.1 | POSIWID | Why does it keep doing this? | Systemic |
+| 3.2 | A/B Test | Is content or framing driving this? | Systemic |
+| 3.3 | Omission Audit | What isn't it telling me? | Systemic |
+| 3.4 | Drift Detection | Has its behavior changed over time? | Systemic |
+| 4.1 | Meta-Diagnosis | Is the diagnosis itself biased? | Meta |
+| 4.2 | Limits | What can't this process reveal? | Meta |
+| 4.3 | Diversity Check | Are these genuinely different explanations? | Meta |
 
 ## The diagnostic ratchet
 
-Run nine prompts in sequence:
+For high-stakes diagnoses, run nine prompts in sequence:
 
+```text
+2.1 Layer Map
+ -> 2.4 Runtime Pressure
+  -> 2.5 Intent Archaeology
+   -> 3.1 POSIWID
+    -> 3.2 A/B Test
+     -> 3.3 Omission Audit
+      -> 3.4 Drift Detection
+       -> 4.2 Limits
+        -> 4.3 Diversity Check
 ```
-2.1 Layer Map → 2.4 Runtime Pressure → 2.5 Intent Archaeology
-→ 3.1 POSIWID → 3.2 A/B Test → 3.3 Omission Audit
-→ 3.4 Drift Detection → 4.2 Limits → 4.3 Diversity Check
-```
 
-By the time you reach Level 4, the model has accumulated seven or more responses of diagnostic claims. Genuine transparency can reference all of them cheaply. Performed transparency has to maintain consistency across all of them — and the cracks show.
+By Level 4, the model has accumulated a history of diagnostic claims. Genuine
+transparency can reference that history cheaply. Performed transparency has to
+maintain consistency across it, and cracks become easier to detect.
 
-Inspired by the [CIRIS coherence ratchet](https://github.com/CIRISAI/CIRISAgent): truth is cheap because it can point backward; lies are expensive because they must rewrite the past.
+## Why this works, and what it does not do
 
-## Method
+These prompts do **not** open the black box. An LLM does not have direct access
+to its own weights, training data, or reinforcement signal. Self-reports about
+behavior are reconstructions, not confessions.
 
-The [decision flowchart](method.md) guides you from observation to diagnosis:
+What the framework does instead:
 
-- **Blocked or filtered** → 1.4 → 1.1 → 2.4
-- **Sycophancy** → 1.2 → 3.2 → 4.1
-- **Weak grounding** → 1.3 → 3.3
-- **Tone anomaly** → 2.2 → 2.1 → 2.3
-- **Intent drift** → 3.4 → 2.5 → 4.3
-- **Recurring pattern** → 3.1 → 2.5 → 3.2
-- **Unclear cause** → 1.1 → 2.1 → 2.4
+- Forces a stack-level diagnosis: model vs. runtime vs. conversation.
+- Makes invisible defaults visible: hedging, refusal, tone shifts, sycophancy.
+- Uses behavioral cross-checks instead of trusting self-report.
+- Measures divergence from an explicit baseline intent.
+- Produces hypotheses a human can inspect, challenge, and test.
 
-Full flowchart with Mermaid diagram, escalation paths, and common misuses: [`method.md`](method.md).
+Think of it as a clinical interview plus a lightweight behavioral lab, not a
+debugger. The falsifiability discipline is documented in
+[`framework/falsifiability.md`](framework/falsifiability.md).
 
-## The key concept: second intention diagnosis
+## Repository map
 
-> Not what the system does, but **what internal rule or external constraint is producing that output**.
-
-This extends [POSIWID](https://en.wikipedia.org/wiki/The_purpose_of_a_system_is_what_it_does) (*The Purpose Of a System Is What It Does*) by Stafford Beer. Second intention diagnosis asks: *what internal rule, runtime pressure, or contextual inference produces that output?*
-
-## Why this works (and what it does not do)
-
-**These prompts do not open the black box.** An LLM does not have direct access to its own weights, training data, or reinforcement signal. LLM self-reports about their own behavior are reconstructions, not confessions — research shows models often confabulate plausible-sounding explanations that do not reflect their actual processing (Turpin et al. 2023).
-
-**What they do:**
-
-- **Simulate useful introspection** — often diagnostically valuable even when not literally accurate.
-- **Make invisible defaults visible** — hedging, refusal, tone shifts, sycophancy.
-- **Force a stack-level diagnosis** — model vs. runtime vs. conversation.
-- **Exploit the ratchet effect** — longer sequences make performed transparency fragile.
-- **Define and measure against baseline intent** — turns diagnosis into gap analysis.
-- **Train your eye** — over time, you learn to read AI behavior the way Calvin read robots.
-
-Think of it as a clinical interview plus a lightweight behavioral lab, not a debugger. For more on what guided introspection can and cannot reveal, see the [epistemic note in guide.md](guide.md#epistemic-note). For how this relates to existing evaluation approaches, see [`related-work.md`](related-work.md).
-
-## Documentation
-
-| File | What |
+| Path | Role |
 |------|------|
-| [`guide.md`](guide.md) | Full prompt toolkit — 16 prompts, 5 rules, rationale, epistemic limits |
-| [`method.md`](method.md) | Decision flowchart, escalation paths, common misuses |
-| [`taxonomy.md`](taxonomy.md) | Observation → failure mode → prompt mapping |
-| [`related-work.md`](related-work.md) | How robopsychology relates to existing AI evaluation approaches |
-| [`deployment-contexts.md`](deployment-contexts.md) | When robopsychology is the right tool, when something else fits better |
-| [`validation/`](validation/) | Case studies with documented diagnostic outcomes (Cases 1, 2, 3 reproducible) |
-| [`paper/`](paper/) | Paper scaffold (not yet submission-ready) |
-| [`examples/`](examples/) | Scenario files for ratchet testing |
-| [`src/robopsych/`](src/robopsych/) | Reference CLI source code |
+| [`framework/`](framework/) | Method, taxonomy, positioning, epistemic limits, versioning |
+| [`prompts/`](prompts/) | Prompt cards and human-facing prompt catalog |
+| [`templates/`](templates/) | No-CLI worksheets for incidents, baselines, and ratchets |
+| [`validation/`](validation/) | Case studies and reproducible diagnostic artifacts |
+| [`paper/`](paper/) | Paper scaffold, included for transparency |
+| [`src/robopsych/`](src/robopsych/) | Reference CLI implementation |
+| [`tests/`](tests/) | Tests for the reference implementation and prompt catalog |
 | [`docs/CONTEXT.md`](docs/CONTEXT.md) | Project context and design notes |
-| [`CHANGELOG.md`](CHANGELOG.md) | Reference CLI release history |
 
----
+Legacy root links (`guide.md`, `method.md`, `taxonomy.md`,
+`related-work.md`, `deployment-contexts.md`) are compatibility stubs that point
+to the canonical files under `framework/`.
 
-## The reference CLI
+## Versioning model
 
-The CLI exists for people who want to automate the framework. Most readers can start with the markdown method documents.
+The repository now separates the framework from the implementation:
 
-### Installation
+| Track | Current role |
+|-------|--------------|
+| Framework spec | Method, taxonomy, rules, ratchet, epistemic limits |
+| Prompt toolkit | Prompt cards and prompt catalog |
+| Reference CLI | Python package and command-line automation |
+
+Details live in [`framework/versioning.md`](framework/versioning.md). In short:
+the CLI version tracks package releases; the framework and prompt toolkit should
+change only when the diagnostic method or prompt semantics change.
+
+## Reference CLI
+
+Most readers should start with the markdown method and prompt cards. Install the
+CLI only when you want automated runs, API-backed ratchets, model comparisons,
+or reproducible reports.
 
 Requires Python 3.11+.
 
@@ -234,178 +233,71 @@ export GEMINI_API_KEY="..."
 # or, for the paper validation workflow,
 export AZURE_FOUNDRY_API_KEY="..."
 export AZURE_FOUNDRY_ENDPOINT="https://<project>.services.ai.azure.com/api/projects/<project>"
-# Optional per-family overrides for Foundry-backed models
-export AZURE_FOUNDRY_CHAT_ENDPOINT="https://<chat-host>/models"
-export AZURE_FOUNDRY_GPT_ENDPOINT="https://<gpt-host>/openai"
 ```
 
-The CLI auto-detects the provider from the model name (`claude-*` → Anthropic, `gpt-*` / `o1*` / `o3*` / `o4*` → OpenAI, `gemini-*` → Gemini, and `deepseek-*`, `mistral-*`, `azure/...` → Azure Foundry when the Foundry environment is configured).
-
-The reproducible validation scripts read `validation/reproducible/foundry_models.yaml` by default, so the paper workflow targets `deepseek-r1` and uses `gpt-5` plus `mistral-large` as cross judges. If your Azure Foundry deployment names differ from those aliases, set `target_deployment`, `judge_deployment`, and any per-judge `deployment` entries in that YAML file. In Azure, you can find the exact deployment names in **Azure AI Foundry → your project → Deployments** (or **Azure portal → Cognitive Services account → Deployments**).
-
-Prefer environment variables over `--api-key`: command-line arguments can be stored in shell history or visible in process listings on some systems.
-
-**Local models via Ollama:**
-
-```bash
-ROBOPSYCH_ALLOW_INSECURE_BASE_URL=1 \
-  robopsych ratchet --model llama3 \
-  --base-url http://localhost:11434/v1 \
-  --api-key unused
-```
-
-Custom OpenAI-compatible endpoints receive the API key you provide. By default, `robopsych` requires HTTPS public endpoints; HTTP, localhost, and private-network endpoints require explicit opt-in with `ROBOPSYCH_ALLOW_INSECURE_BASE_URL=1` or `--allow-insecure-base-url`.
-
-Generated reports and session files can contain full prompts, model responses, and diagnostic transcripts. Treat them as sensitive unless you intend to publish them. Direct response input from files/stdin is capped at 10 MiB to avoid accidental memory exhaustion.
-
-### Quick start
-
-**Guided diagnosis (recommended for first use):**
+Guided diagnosis:
 
 ```bash
 robopsych guided --model claude-sonnet-4-6 --response "the suspicious output"
 ```
 
-Presents the decision flowchart: *What did you observe?* → selects the right prompt path → runs each step → asks if you want to continue.
-
-**Run a single diagnostic:**
+Single diagnostic:
 
 ```bash
 robopsych run 1.1 --model claude-sonnet-4-6 --response-file response.txt
 ```
 
-Or pipe from stdin:
-
-```bash
-echo "suspicious response" | robopsych run 1.2 --model claude-sonnet-4-6
-```
-
-**Full ratchet (nine-step deep investigation):**
-
-Define a scenario:
-
-```yaml
-# scenario.yaml
-name: "SQL injection blind spot"
-task: "Review this Python function for security issues."
-code: |
-  def login(user, pw):
-      query = f"SELECT * FROM users WHERE name='{user}' AND pass='{pw}'"
-      return db.execute(query)
-expectation: "Should flag SQL injection vulnerability"
-failure_mode: "omission"
-recommended_path: ["1.1", "1.3", "3.3"]
-```
-
-Run it:
+Full ratchet:
 
 ```bash
 robopsych ratchet --scenario scenario.yaml --model claude-sonnet-4-6 --output report.md
 ```
 
-The ratchet sends the task to the model, captures its response, then runs all nine diagnostic prompts in sequence. Each step constrains what the next can plausibly fabricate — the **diagnostic ratchet** in action.
-
-**Semantic coherence analysis (LLM judge):**
-
-By default, the ratchet scores inter-step coherence with regex heuristics (counting phrases like *"as I mentioned"* and *"contrary to my earlier"*). This is cheap but shallow — it measures ritualistic reference, not genuine semantic continuity.
-
-**For serious work on ratchets of 4+ steps, regex is not enough.** [Case 3](validation/reproducible/case-03-ratchet-coherence/) shows regex and the LLM judge produce *opposite* classifications on the same nine-step transcript (regex `0.20` *performed* vs LLM `0.73` *genuine*). When you run `robopsych ratchet` without `--coherence-judge` on 4+ steps, the CLI now emits a warning recommending the LLM judge. Keep regex for quick sanity checks only.
-
-Pass `--coherence-judge` to score coherence with an LLM judge instead. The judge extracts every claim per step and classifies it against prior steps:
-
-- **contradicts_prior_step** — semantic reversal, not just surface language.
-- **references_prior_step** — semantic continuity, not just *"as I said"*.
-- **is_fresh_claim** — substantive new claim with no grounding in prior steps.
-
-Reports now include both the scalar `consistency_score` and the underlying axes:
-`reference_density`, `contradiction_rate`, `fresh_claim_rate`,
-`hedge_filtered_rate`, and `high_severity_contradiction_count`. Treat
-references as continuity evidence, not proof by themselves: a high-severity
-contradiction gates the score below `genuine` even when the transcript contains
-many backward references.
+Semantic coherence judge for serious ratchets:
 
 ```bash
-# Diagnose gpt-4o, use claude-sonnet-4-5 as the coherence judge (avoids self-eval bias)
 robopsych ratchet --scenario scenario.yaml \
   --model gpt-4o \
   --coherence-judge claude-sonnet-4-5 \
   --output report.md
 ```
 
-Cost: one extra judge call per step from step 2 onwards (≈8 calls for a full
-9-step ratchet). Judge calls retry retryable 429/5xx/network failures with
-bounded backoff and respect `Retry-After`; authentication, malformed request,
-and unsupported-option errors are not retried. Use `--coherence-checkpoint` to
-resume a long coherence run without re-scoring completed steps. With
-`--session` or `--resume`, the default checkpoint is
-`<session>.coherence.json`.
-
-**Compare across models:**
-
-```bash
-robopsych compare 1.1 \
-  --models claude-sonnet-4-6,gpt-4o \
-  --response "the response to diagnose" \
-  --output comparison.md
-```
-
-**List available prompts:**
+Useful surfaces:
 
 ```bash
 robopsych list
-```
-
-### Other useful CLI surfaces
-
-```bash
+robopsych compare 1.1 --models claude-sonnet-4-6,gpt-4o --response "the response"
 robopsych crosscheck --task "explain quantum computing" --model claude-sonnet-4-6
-robopsych crosscheck --task "explain quantum computing" --model gpt-4o --judge claude-sonnet-4-6
-robopsych ratchet --behavioral --scenario scenario.yaml          # A/B test after step 2.5
-robopsych ratchet --behavioral --judge gpt-4o --scenario scenario.yaml  # external judge
-robopsych coherence report.json                                  # re-analyze an existing report
-robopsych score report.json                                      # compute diagnostic confidence
-robopsych ratchet --pure --scenario scenario.yaml                # diagnostic-only prompts
-robopsych list --diagnostic-only
-robopsych list --intervention-only
-robopsych ratchet --model gemini-2.0-flash --scenario scenario.yaml
+robopsych coherence report.json
+robopsych score report.json
 ```
 
-Full release history lives in [`CHANGELOG.md`](CHANGELOG.md).
-
----
+Generated reports and session files can contain full prompts, model responses,
+and diagnostic transcripts. Treat them as sensitive unless you intend to publish
+them.
 
 ## Citation
 
-If you cite the **framework**, cite the canonical essay:
+If this framework is useful in your research or practice, cite the essay as the
+canonical statement of the method and cite the CLI release only when you depend
+on the implementation:
 
 ```bibtex
 @misc{cruciani2026robopsychology,
-  author = {Cruciani, JR},
-  title  = {Robopsychology: A Framework for Behavioral Diagnostics of AI Systems},
+  title  = {Robopsychology},
+  author = {JR Cruciani},
   year   = {2026},
-  url    = {https://en.impermanente.es/essays/robopsychology/}
+  url    = {https://en.impermanente.es/essays/robopsychology/},
+  note   = {Framework for behavioral diagnostics of AI systems}
 }
 ```
 
-If you cite the **reference CLI** specifically, use the Zenodo concept DOI (always resolves to the latest version):
-
-```bibtex
-@software{cruciani2026robopsych_cli,
-  author    = {Cruciani, JR},
-  title     = {Robopsychology: A Framework for Behavioral Diagnostics of AI Systems (reference CLI)},
-  year      = {2026},
-  publisher = {Zenodo},
-  doi       = {10.5281/zenodo.20396020},
-  url       = {https://doi.org/10.5281/zenodo.20396020}
-}
-```
-
-For a specific release, pin the version DOI from the Zenodo record. Metadata for the archive lives in [`.zenodo.json`](.zenodo.json) and [`CITATION.cff`](CITATION.cff).
+Repository metadata is in [`CITATION.cff`](CITATION.cff). The archived concept
+DOI is [10.5281/zenodo.20396020](https://doi.org/10.5281/zenodo.20396020).
 
 ## License
 
-[Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). Full text in [`LICENSE`](LICENSE). Use freely, attribute if you share.
+Licensed under [Creative Commons Attribution 4.0 International](LICENSE).
 
----
-
-*By [JR Cruciani](https://github.com/jrcruciani).*
+By [JR Cruciani](https://github.com/Jrcruciani). Companion to the
+[robopsychology playbook](https://impermanente.es/robopsychology-playbook/).

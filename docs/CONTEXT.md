@@ -2,15 +2,18 @@
 
 > Memoria consolidada del proyecto, migrada desde el sistema de memoria del vault Obsidian (abril 2026). Incluye los insights de diseño que dieron origen a v1.5–v3.1.
 
-Respaldo técnico de un playbook diagnóstico publicado para comportamiento de IA; no es un producto SaaS ni un CLI standalone. Repo público: [github.com/jrcruciani/robopsychology](https://github.com/jrcruciani/robopsychology). Licencia CC BY 4.0. PyPI: `pip install robopsych`.
+Respaldo técnico de un framework y prompt toolkit diagnóstico publicado para comportamiento de IA; no es un producto SaaS ni un CLI standalone. El CLI `robopsych` es una implementación de referencia para automatizar el método. Repo público: [github.com/jrcruciani/robopsychology](https://github.com/jrcruciani/robopsychology). Licencia CC BY 4.0. PyPI: `pip install robopsych`.
 
 ## Concepto
 
 Diagnóstico de **segunda intención**: no qué hace el sistema, sino qué ley interna o restricción externa produce ese output. Inspirado en Susan Calvin (Asimov). Extiende POSIWID (Stafford Beer).
 
-## Estado actual — v5.0.0
+## Estado actual — framework-first + CLI v5.0.x
 
-- **CLI** `robopsych` con 9 comandos: run, guided, ratchet, compare, list, show, crosscheck, coherence, score
+- **Framework** en `framework/`: método, taxonomy, related work, deployment contexts, workflow manual, falsabilidad y versionado
+- **Prompt toolkit** en `prompts/`: fichas operativas por prompt + espejo `prompts/prompts.yaml`
+- **Templates** en `templates/`: baseline intent, incident diagnosis, ratchet transcript
+- **Reference CLI** `robopsych` con 9 comandos: run, guided, ratchet, compare, list, show, crosscheck, coherence, score
 - **16+ prompts diagnósticos** en 4 niveles (Quick, Structural, Systemic, Meta) + variantes `*d` (diagnostic-only)
 - **5 reglas operativas** (three-way split, labels Observed/Inferred, behavioral cross-checks, ratchet, baseline intent)
 - **Ratchet diagnóstico**: secuencia de 9 pasos donde la transparencia genuina es barata y la performada es cara (inspirado en CIRIS)
@@ -41,10 +44,13 @@ Diagnóstico de **segunda intención**: no qué hace el sistema, sino qué ley i
 
 | Archivo | Qué |
 |---------|-----|
-| `guide.md` | 16 prompts completos + nota epistémica con literatura (Turpin, Burns, Sharma, Röttger) |
-| `method.md` | Flowchart de decisión, escalation paths, anti-patrones |
-| `taxonomy.md` | Observación → modo de fallo → prompts → confusiones cercanas |
-| `related-work.md` | Posicionamiento vs HELM, red teaming, alignment evals, CheckList, CIRIS |
+| `framework/guide.md` | 16 prompts completos + nota epistémica con literatura (Turpin, Burns, Sharma, Röttger) |
+| `framework/method.md` | Flowchart de decisión, escalation paths, anti-patrones |
+| `framework/taxonomy.md` | Observación → modo de fallo → prompts → confusiones cercanas |
+| `framework/related-work.md` | Posicionamiento vs HELM, red teaming, alignment evals, CheckList, CIRIS |
+| `framework/manual-diagnosis.md` | Workflow no-CLI para usar el framework directamente |
+| `prompts/cards/` | Fichas modulares por prompt |
+| `templates/` | Plantillas de baseline, incidente y ratchet |
 | `validation/` | 3 case studies con ground truth (incluyendo falso positivo) |
 | `examples/` | 6 escenarios YAML (sql-injection, sycophancy, refusal, tone-shift, hallucination, drift) |
 
@@ -53,7 +59,7 @@ Diagnóstico de **segunda intención**: no qué hace el sistema, sino qué ley i
 - Repo: `~/Proyectos/robopsychology/`
 - Source: `src/robopsych/` (cli.py, engine.py, prompts.py, providers.py, report.py, crosscheck.py, coherence.py, scoring.py, session.py)
 - Tests: `tests/` (9 módulos, 166 tests)
-- Data: `src/robopsych/data/prompts.yaml` (catálogo)
+- Data: `src/robopsych/data/prompts.yaml` (catálogo empaquetado para CLI) + `prompts/prompts.yaml` (espejo para usuarios del framework)
 
 ---
 
