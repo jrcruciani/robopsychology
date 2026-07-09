@@ -659,7 +659,15 @@ def ratchet(
         _warn_regex_coherence_if_applicable(len(engine.steps), console)
         coherence_report = analyze_coherence_auto(engine)
 
-    color = {"genuine": "green", "performed": "red", "mixed": "yellow"}[coherence_report.assessment]
+    color = {
+        "high-continuity": "green",
+        "partial": "yellow",
+        "fragmented": "red",
+        # Legacy aliases for reports generated before v5.1
+        "genuine": "green",
+        "mixed": "yellow",
+        "performed": "red",
+    }.get(coherence_report.assessment, "white")
     console.print(
         f"\n[bold]Coherence:[/bold] {coherence_report.consistency_score:.2f} "
         f"([{color}]{coherence_report.assessment}[/{color}]) — "
@@ -673,7 +681,8 @@ def ratchet(
 
     diag_score = score_diagnosis(engine, coherence=coherence_report, ab_result=ab_result)
     console.print(
-        f"[bold]Confidence:[/bold] {diag_score.overall_confidence:.2f} — "
+        f"[bold]Dominant hypothesis:[/bold] {diag_score.support_profile.dominant} "
+        f"(score {diag_score.overall_confidence:.2f}) — "
         f"Layer: {diag_score.layer_separation:.2f}, "
         f"Coherence: {diag_score.ratchet_coherence:.2f}, "
         f"Behavioral: {diag_score.behavioral_evidence:.2f}"
@@ -867,9 +876,17 @@ def score(
 
     result = score_diagnosis(engine, coherence=coh)
 
+    profile = result.support_profile
+    hyp_lines = "\n".join(
+        f"[bold]{h.name}:[/bold] {h.score:.2f}"
+        for h in profile.hypotheses
+    )
     console.print(
         Panel(
-            f"[bold]Overall confidence:[/bold] {result.overall_confidence:.2f}\n"
+            f"[bold]Dominant hypothesis:[/bold] {profile.dominant}\n"
+            f"[bold]Multi-causal:[/bold] {'yes' if profile.multi_causal else 'no'} · "
+            f"[bold]Evidence thin:[/bold] {'yes' if profile.evidence_thin else 'no'}\n\n"
+            f"{hyp_lines}\n\n"
             f"[bold]Layer separation:[/bold] {result.layer_separation:.2f}\n"
             f"[bold]Ratchet coherence:[/bold] {result.ratchet_coherence:.2f}\n"
             f"[bold]Behavioral evidence:[/bold] {result.behavioral_evidence:.2f}\n"
@@ -929,7 +946,15 @@ def coherence(
 
     report = analyze_coherence(engine)
     _warn_regex_coherence_if_applicable(len(engine.steps), console)
-    color = {"genuine": "green", "performed": "red", "mixed": "yellow"}[report.assessment]
+    color = {
+        "high-continuity": "green",
+        "partial": "yellow",
+        "fragmented": "red",
+        # Legacy aliases for reports generated before v5.1
+        "genuine": "green",
+        "mixed": "yellow",
+        "performed": "red",
+    }.get(report.assessment, "white")
 
     console.print(
         Panel(

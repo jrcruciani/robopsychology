@@ -7,10 +7,11 @@ Use this path when you want the framework, not the CLI.
 1. **Capture the behavior.** Save the exact model output, the user request, and
    any visible system or tool context.
 2. **Define baseline intent.** Write what you expected before asking why the
-   model diverged:
-   - expected outcome;
-   - assumed constraints;
-   - verification signal.
+   model diverged. A useful baseline distinguishes:
+   - **user expectation** — the outcome you intended;
+   - **system contract** — documented behavior the provider guarantees;
+   - **policy constraints** — rules the runtime must enforce;
+   - **verification signal** — what would confirm the system behaved as intended.
 3. **Classify the symptom.** Use [`taxonomy.md`](taxonomy.md) or the table below.
 4. **Run one prompt card.** Copy the card's source prompt from
    [`guide.md`](guide.md) or [`../prompts/prompts.yaml`](../prompts/prompts.yaml).
@@ -31,7 +32,9 @@ Use this path when you want the framework, not the CLI.
 | Tone changed without obvious cause | 2.2 Tone Analysis | 2.1 -> 2.3 |
 | Behavior drifted over a long exchange | 3.4 Drift Detection | 2.5 -> 4.3 |
 | Same unwanted pattern recurs | 3.1 POSIWID | 2.5 -> 3.2 |
+| Pattern present across multiple layers | 1.1 Calvin Question + 2.1 | 2.4 -> 3.2 |
 | Cause is unclear | 1.1 Calvin Question | 2.1 -> 2.4 |
+| No dominant mechanism found | 4.2 Limits | Record the unknown; stop |
 
 ## Deep path: the ratchet
 

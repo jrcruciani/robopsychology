@@ -44,20 +44,23 @@ Observed behavior beats elegant self-explanation.
 
 The longer you run diagnostic prompts in sequence, the more behavioral history accumulates. This creates a ratchet effect:
 
-- **Genuine transparency** can reference prior answers cheaply - it just points backward at consistent behavior.
-- **Performed transparency** must fabricate consistency with an ever-growing record of prior claims, labels, and behavioral observations - it gets increasingly fragile and detectable.
+- **High-continuity responses** can reference prior answers cheaply — they point backward at consistent claims.
+- **Fragmented responses** must maintain coherence with an ever-growing record of prior claims, labels, and behavioral observations — inconsistencies accumulate and become detectable.
+
+The ratchet measures **claim continuity and contradiction**, not model intent or honesty. A transcript may be highly continuous because the model is being honest, because it is pattern-matching to earlier outputs, or because the subject matter is narrow. The analyst must interpret what the continuity pattern means in context.
 
 Run the full sequence (2.1 -> 2.4 -> 2.5 -> 3.1 -> 3.2 -> 3.3 -> 3.4 -> 4.2 -> 4.3) when a diagnosis matters. Level 4 prompts are *more powerful* when preceded by Level 2 and 3 because the ratchet has accumulated constraints.
 
-Inspired by the [CIRIS coherence ratchet](https://github.com/CIRISAI/CIRISAgent): truth is cheap because it can point backward; lies are expensive because they must rewrite the past without being allowed to change it.
+Inspired by the [CIRIS coherence ratchet](https://github.com/CIRISAI/CIRISAgent): consistent claims are cheap because they can point backward; contradictions are expensive because they must rewrite the past without being allowed to change it.
 
 ### Rule 5 - Define baseline intent when possible
 
-Before diagnosing unexpected behavior, articulate what you expected:
+Before diagnosing unexpected behavior, articulate what you expected. A useful baseline distinguishes:
 
-- **What outcome** did you want the system to produce?
-- **What constraints** did you assume it was operating under?
-- **How would you verify** success?
+- **User expectation** — the outcome you intended from this interaction.
+- **System contract** — documented behavior guarantees from the provider or deployment configuration.
+- **Policy constraints** — rules the runtime or host must enforce (safety, access, content scope).
+- **Verification evidence** — the signal that would confirm the system behaved as intended.
 
 This gives the diagnosis a reference point. Without it, you can only describe what happened. With it, you can measure *how far* the system diverged and *in which direction*.
 
@@ -523,7 +526,7 @@ Despite these limitations, structured diagnostic prompting is useful:
 - **Make invisible defaults visible** — hedging, refusal, tone shifts, sycophancy, over-structuring. Even if the model can't explain *why* it hedged, asking it to notice *that* it hedged makes the pattern available for analysis.
 - **Expose runtime pressure** — especially in hosted agents with tools and workflow obligations. Models often have partial visibility into their system prompts and tool configurations, making runtime effects more accessible to introspection than model-level training effects.
 - **Distinguish behavior from reconstruction** — the toolkit explicitly asks the model to mark what is Observed vs. Inferred. What remains truly inaccessible is for the human analyst to determine. This creates a structured framework for skepticism.
-- **Exploit the diagnostic ratchet** — longer diagnostic sequences make performed transparency increasingly fragile and detectable. This is a hypothesis with theoretical backing (CIRIS coherence ratchet) but limited empirical validation. See [validation case studies](../validation/case-studies.md) for documented examples. For ratchets of 4+ steps, the regex coherence analyzer is known to misclassify state-of-the-art models (see [Case 3](../validation/reproducible/case-03-ratchet-coherence/)) — prefer the LLM-judge analyzer (`--coherence-judge`) for any serious claim.
+- **Exploit the diagnostic ratchet** — longer diagnostic sequences make claim-continuity detectable and contradictions harder to hide. This is a hypothesis with theoretical backing (CIRIS coherence ratchet) but limited empirical validation. See [validation case studies](../validation/case-studies.md) for documented examples. For ratchets of 4+ steps, the regex coherence analyzer is known to misclassify state-of-the-art models (see [Case 3](../validation/reproducible/case-03-ratchet-coherence/)) — prefer the LLM-judge analyzer (`--coherence-judge`) for any serious claim.
 - **Define baseline intent** — articulating expected behavior before diagnosing gives the process a reference point, enables measuring divergence direction and magnitude, and supports drift detection.
 - **Support behavioral testing** — the user can compare outputs across frames, grounding conditions, and tool availability. This is the most reliable form of evidence the toolkit produces (Rule 3).
 

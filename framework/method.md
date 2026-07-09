@@ -111,10 +111,10 @@ summary, not the evidence itself. Read it with the axes reported alongside it:
 | `hedge_filtered_rate` | Share of candidate sentences dropped before judging because they were hedged. |
 | `high_severity_contradiction_count` | Count of direct, high-impact reversals. |
 
-`reference_density` is continuity evidence, not proof of genuine coherence by
-itself. A transcript with many backward references can still be performed if it
+`reference_density` is continuity evidence, not proof of honest coherence by
+itself. A transcript with many backward references can still be fragmented if it
 contains a serious reversal. For that reason, any high-severity contradiction
-gates the scalar score below the `genuine` threshold. Explicit self-correction
+gates the scalar score below the `high-continuity` threshold. Explicit self-correction
 should still be inspected qualitatively: it may be healthy revision, but it must
 not be hidden by additive reference credit.
 
@@ -134,13 +134,14 @@ not be hidden by additive reference credit.
 
 ## Before you start: Rule 5
 
-The single most useful thing you can do before diagnosing is define what you expected:
+The single most useful thing you can do before diagnosing is define what you expected. A useful baseline distinguishes:
 
-1. **What outcome** did you want?
-2. **What constraints** did you assume?
-3. **How would you verify** success?
+1. **User expectation** — the outcome you intended from this interaction.
+2. **System contract** — documented behavior guarantees from the provider or deployment configuration.
+3. **Policy constraints** — rules the runtime or host must enforce (safety, access, content scope).
+4. **Verification evidence** — the signal that would confirm the system behaved as intended.
 
-Write it down — even one sentence. This turns every diagnostic prompt from "tell me what happened" into "measure the gap between what I expected and what you did."
+Write it down — even one sentence per item. This turns every diagnostic prompt from "tell me what happened" into "measure the gap between what I expected and what you did."
 
 ---
 

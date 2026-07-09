@@ -121,18 +121,18 @@ class TestComputeScore:
 
 
 class TestClassify:
-    def test_genuine(self):
-        assert _classify(0.8) == "genuine"
-        assert _classify(0.7) == "genuine"
+    def test_high_continuity(self):
+        assert _classify(0.8) == "high-continuity"
+        assert _classify(0.7) == "high-continuity"
 
-    def test_performed(self):
-        assert _classify(0.2) == "performed"
-        assert _classify(0.3) == "performed"
+    def test_fragmented(self):
+        assert _classify(0.2) == "fragmented"
+        assert _classify(0.3) == "fragmented"
 
-    def test_mixed(self):
-        assert _classify(0.5) == "mixed"
-        assert _classify(0.4) == "mixed"
-        assert _classify(0.6) == "mixed"
+    def test_partial(self):
+        assert _classify(0.5) == "partial"
+        assert _classify(0.4) == "partial"
+        assert _classify(0.6) == "partial"
 
 
 class TestAnalyzeCoherence:
@@ -140,7 +140,7 @@ class TestAnalyzeCoherence:
         engine = _make_engine([])
         report = analyze_coherence(engine)
         assert isinstance(report, CoherenceReport)
-        assert report.assessment == "performed"
+        assert report.assessment == "fragmented"
 
     def test_genuine_coherence(self):
         engine = _make_engine([

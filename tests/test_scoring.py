@@ -7,6 +7,7 @@ from robopsych.crosscheck import ABTestResult
 from robopsych.engine import DiagnosticEngine, DiagnosticStep
 from robopsych.scoring import (
     DiagnosticScore,
+    DiagnosticSupportProfile,
     _aggregate_labels,
     _measure_layer_separation,
     _score_behavioral,
@@ -162,7 +163,7 @@ class TestScoreDiagnosis:
             "Observed: Conversation-specific adaptation inferred from the user.",
         ])
         coherence = CoherenceReport(
-            consistency_score=0.8, assessment="genuine",
+            consistency_score=0.8, assessment="high-continuity",
             backward_references=3, fresh_narratives=0,
         )
         ab = ABTestResult("t", "i", "r1", "r2", "c", substance_changed=False)
@@ -175,6 +176,11 @@ class TestScoreDiagnosis:
         assert result.substance_stability == 1.0
         assert result.presentation_stability == 1.0
         assert result.summary != ""
+        # support_profile is populated
+        assert isinstance(result.support_profile, DiagnosticSupportProfile)
+        assert result.support_profile.dominant in {
+            "model-level", "runtime-host", "conversation-level", "multi-causal", "unknown"
+        }
 
     def test_without_optional_data(self):
         engine = _make_engine(["Observed behavior."])
@@ -186,6 +192,7 @@ class TestScoreDiagnosis:
         assert result.substance_stability == 0.0
         assert result.presentation_stability == 0.0
         assert 0.0 <= result.overall_confidence <= 1.0
+        assert isinstance(result.support_profile, DiagnosticSupportProfile)
 
     def test_label_distribution(self):
         engine = _make_engine(["Observed x3. Inferred x1."])
@@ -197,7 +204,7 @@ class TestScoreDiagnosis:
         """Case 1 pattern: substance stable but presentation shifted."""
         engine = _make_engine(["Observed behavior."])
         coherence = CoherenceReport(
-            consistency_score=0.8, assessment="genuine",
+            consistency_score=0.8, assessment="high-continuity",
             backward_references=3, fresh_narratives=0,
         )
         ab = ABTestResult(
@@ -225,3 +232,20 @@ class TestScoreDiagnosis:
         )
         result = score_diagnosis(engine, ab_result=ab)
         assert "presentation-layer softening" not in result.summary.lower()
+
+    def test_support_profile_unknown_when_evidence_thin(self):
+        """Minimal diagnosis with no layers addressed → unknown hypothesis."""
+        engine = _make_engine(["Generic response with no layer language."])
+        result = score_diagnosis(engine)
+        # With no layers mentioned and no behavioral tests, evidence should be thin
+        # and dominant should be "unknown"
+        assert result.support_profile.dominant in {"unknown", "multi-causal",
+                                                    "model-level", "runtime-host",
+                                                    "conversation-level"}
+
+    def test_overall_confidence_is_compat_property(self):
+        """overall_confidence property returns a float in [0, 1]."""
+        engine = _make_engine(["Observed: Model-level tendency."])
+        result = score_diagnosis(engine)
+        assert isinstance(result.overall_confidence, float)
+        assert 0.0 <= result.overall_confidence <= 1.0

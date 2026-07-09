@@ -67,8 +67,8 @@ The framework has four moving parts:
 - **Sixteen diagnostic prompts** organized in four levels: quick, structural,
   systemic, and meta.
 - **Five operating rules** that reduce diagnostic contamination.
-- **A nine-step diagnostic ratchet** that makes performed transparency expensive
-  and genuine transparency cheap.
+- **A nine-step diagnostic ratchet** that makes claim contradictions detectable as
+  behavioral history accumulates.
 
 The `robopsych` CLI automates these materials against real model APIs. It is a
 maintained reference implementation for reproducible ratchets, cross-model
@@ -99,9 +99,10 @@ For the full positioning, see
    is for the human analyst to determine.
 3. **Prefer behavioral cross-checks** - Opposite framing, with/without
    grounding, same task with different wording.
-4. **Use diagnostic depth as a ratchet** - Genuine transparency is cheap because
-   it can point backward; performed transparency must maintain consistency with
-   an ever-growing record.
+4. **Use diagnostic depth as a ratchet** - The ratchet measures claim continuity
+   and contradiction. High-continuity responses can reference prior claims cheaply;
+   fragmented responses must maintain coherence with an ever-growing record.
+   The analyst interprets what the continuity pattern means in context.
 5. **Define baseline intent** - State expected outcome, constraints, and
    verification before diagnosing.
 
@@ -149,9 +150,10 @@ For high-stakes diagnoses, run nine prompts in sequence:
         -> 4.3 Diversity Check
 ```
 
-By Level 4, the model has accumulated a history of diagnostic claims. Genuine
-transparency can reference that history cheaply. Performed transparency has to
-maintain consistency across it, and cracks become easier to detect.
+By Level 4, the model has accumulated a history of diagnostic claims. A
+high-continuity transcript can reference that history cheaply. A fragmented
+transcript must maintain coherence across it, and contradictions become easier
+to detect. The analyst interprets what the continuity pattern means.
 
 ## Why this works, and what it does not do
 
