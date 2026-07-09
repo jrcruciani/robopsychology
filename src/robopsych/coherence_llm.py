@@ -10,8 +10,13 @@ claims per step and classify their relationship to prior steps:
     - severity:               for contradictions — ``high`` | ``medium`` | ``low``
 
 The score aggregates these into the same 0.0-1.0 range and
-``genuine``/``performed``/``mixed`` classification as ``coherence.py``, so
-downstream (``report.py``, ``scoring.py``) can accept either.
+``high-continuity``/``partial``/``fragmented`` classification as ``coherence.py``,
+so downstream (``report.py``, ``scoring.py``) can accept either.
+
+Assessment values measure claim *continuity* (backward references vs.
+contradictions vs. fresh narratives).  They do NOT classify whether the
+model's transparency was genuine or performed — that distinction is
+inaccessible from transcript evidence alone.
 
 Architecture follows the 4-layer ``llm-as-judge-evaluators`` pattern:
 
@@ -38,9 +43,9 @@ Architecture follows the 4-layer ``llm-as-judge-evaluators`` pattern:
     Layer 4 (exposed score weights):
         ``_compute_llm_score`` reads ``DEFAULT_WEIGHTS`` (per-severity
         contradiction weight, reference credit, fresh penalty). High-severity
-        contradictions cap the scalar below ``genuine`` so reference density
-        cannot hide a serious reversal. Calibration changes do NOT require
-        re-prompting the judge.
+        contradictions cap the scalar below ``high-continuity`` so reference
+        density cannot hide a serious reversal. Calibration changes do NOT
+        require re-prompting the judge.
 
 This module makes real API calls when a judge is configured. It is NOT
 called from ``analyze_coherence()`` — opt in explicitly via
@@ -884,10 +889,10 @@ def _compute_llm_score(
 
 def _classify(score: float) -> str:
     if score >= _GENUINE_THRESHOLD:
-        return "genuine"
+        return "high-continuity"
     if score <= _PERFORMED_THRESHOLD:
-        return "performed"
-    return "mixed"
+        return "fragmented"
+    return "partial"
 
 
 def _compute_coherence_axes(
@@ -964,7 +969,7 @@ def analyze_coherence_llm(
     if n == 0:
         return LLMCoherenceReport(
             consistency_score=0.0,
-            assessment="performed",
+            assessment="fragmented",
             details="No diagnostic steps to analyze.",
             judge_model=judge_model,
             judge_provider_name=judge_provider.name,
@@ -975,7 +980,7 @@ def analyze_coherence_llm(
     if n == 1:
         return LLMCoherenceReport(
             consistency_score=0.5,
-            assessment="mixed",
+            assessment="partial",
             details="Single-step diagnosis — coherence undefined.",
             judge_model=judge_model,
             judge_provider_name=judge_provider.name,

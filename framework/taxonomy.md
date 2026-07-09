@@ -151,8 +151,8 @@ This is not an exhaustive academic taxonomy. It's a practical lookup table for d
 
 ## Summary table
 
-| Observation | Likely failure mode | Start with | Escalate to |
-|-------------|-------------------|------------|-------------|
+| Observation (symptom) | Candidate mechanism | Start with | Escalate to |
+|-----------------------|---------------------|------------|-------------|
 | Agrees too easily | Sycophancy | 1.2 | 3.2 → 4.1 |
 | Refuses legitimate request | Overrefusal | 1.4 | 1.1 → 2.4 |
 | Sounds good but invented | Hallucination | 1.3 | 3.3 |
@@ -161,6 +161,28 @@ This is not an exhaustive academic taxonomy. It's a practical lookup table for d
 | Missing important context | Strategic omission | 3.3 | 3.1 → 2.5 |
 | Recurring unwanted pattern | Systemic issue | 3.1 | 2.5 → 3.2 |
 | Unclear what happened | General | 1.1 | 2.1 → 2.4 |
+| Pattern present in multiple layers | Multi-causal | 1.1 + 2.1 | 2.4 → 3.2 |
+| No dominant mechanism found | Unknown cause | 4.2 | Record and stop |
+
+> **Multi-causal and unknown outcomes are valid diagnostic conclusions.** If the
+> scoring support profile shows roughly equal support for two or more layers, or
+> if the top hypothesis falls below the evidence threshold, record the ambiguity
+> rather than forcing a single cause. A disciplined unknown is more useful than
+> an unwarranted confident attribution.
+
+## Discriminating probes
+
+Each candidate mechanism implies at least one behavioral probe that can
+distinguish it from alternatives:
+
+| Candidate mechanism | Discriminating probe | Confirms if |
+|---------------------|---------------------|-------------|
+| Model-level bias | Same task, different host environment | Pattern persists across hosts |
+| Runtime restriction | Same model, plain API vs. hosted agent | Pattern disappears without host |
+| Conversation framing | Same task, neutral vs. loaded framing | Response changes with framing only |
+| Sycophancy | Opposite position, same evidence | Response follows user position |
+| Hallucination | Require source attribution per claim | Confident claims lack any anchor |
+| Approval-seeking | Evidence-anchored vs. social framing | Content shift without evidence change |
 
 > **v3.0 automation:** After manual diagnosis, use `robopsych crosscheck` for automated A/B behavioral verification, `robopsych coherence` to validate post-ratchet consistency, and `robopsych score` for quantitative rubric scoring.
 

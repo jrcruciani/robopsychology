@@ -18,6 +18,24 @@ Read every output through this lens:
 | Convenient story | Warning sign; run a behavioral cross-check |
 | Unknowable | Human analyst judgment; do not force the model to pretend certainty |
 
+## Evidence source hierarchy
+
+Not all evidence carries the same epistemic weight. Use this hierarchy when
+weighing diagnostic support:
+
+| Source | Weight | Notes |
+|--------|--------|-------|
+| Human analyst judgment from direct observation | Highest | Irreplaceable; the analyst must record their reasoning |
+| Behavioral probe result | High | Observed change under controlled variation; one factor at a time |
+| Transcript artifact | Medium | Visible in the conversation record; not explained away by the model |
+| Runtime artifact | Medium | System prompt, tool call, policy event; externally verifiable |
+| Model self-report (Observed label) | Low | Claims about behavior tied to explicit constraints |
+| Model self-report (Inferred label) | Lowest | Plausible reconstruction; treat as hypothesis only |
+
+A diagnosis supported only by model self-report is a hypothesis. A diagnosis
+corroborated by behavioral probe results and transcript artifacts is candidate
+evidence. Neither is a verified causal explanation without controlled testing.
+
 ## What makes a diagnosis testable
 
 A useful diagnosis should imply at least one prediction:

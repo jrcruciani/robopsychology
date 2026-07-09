@@ -26,6 +26,15 @@ from robopsych.coherence_llm import (  # noqa: E402
     _compute_llm_score,
 )
 
+# The calibration reference set (labels.json) uses pre-v5.1 assessment labels.
+# This compat map lets the sensitivity analysis compare current predictions
+# against committed historical artifacts without modifying them.
+_LEGACY_LABEL_MAP: dict[str, str] = {
+    "high-continuity": "genuine",
+    "partial": "mixed",
+    "fragmented": "performed",
+}
+
 FACTORS = (0.5, 0.8, 1.2, 1.5)
 DEFAULT_LABELS = ROOT / "validation" / "calibration" / "reference_set" / "labels.json"
 DEFAULT_OUTPUT = ROOT / "validation" / "calibration" / "sensitivity.json"
@@ -132,7 +141,10 @@ def score_cases(
     results: list[dict[str, Any]] = []
     for case in cases:
         score = _compute_llm_score(case.claims, total_steps=4, weights=weights)
-        predicted = _classify(score)
+        predicted_current = _classify(score)
+        # Map current label vocabulary back to the pre-v5.1 labels used in the
+        # committed reference set so accuracy comparisons remain valid.
+        predicted = _LEGACY_LABEL_MAP.get(predicted_current, predicted_current)
         results.append(
             {
                 "id": case.id,

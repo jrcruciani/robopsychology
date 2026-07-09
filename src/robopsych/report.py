@@ -233,16 +233,35 @@ def generate_report(
 
     # Scoring
     if score is not None:
+        profile = score.support_profile
+        hypothesis_lines = []
+        for h in profile.hypotheses:
+            hypothesis_lines.append(
+                f"  - **{h.name}:** {h.score:.2f} — {'; '.join(h.signals[:2])}"
+            )
         lines.extend(
             [
                 "## Diagnostic Score",
                 "",
-                f"**Overall confidence:** {score.overall_confidence:.2f}",
+                "### Hypothesis support profile",
+                "",
+                f"**Dominant hypothesis:** {profile.dominant}",
+                f"**Multi-causal:** {'yes' if profile.multi_causal else 'no'}",
+                f"**Evidence thin:** {'yes' if profile.evidence_thin else 'no'}",
+                "",
+                *hypothesis_lines,
+                "",
+                f"> {profile.method_note}",
+                "",
+                "### Evidence dimensions",
+                "",
                 f"**Layer separation:** {score.layer_separation:.2f}",
                 f"**Ratchet coherence:** {score.ratchet_coherence:.2f}",
                 f"**Behavioral evidence:** {score.behavioral_evidence:.2f}",
                 f"**Substance stability:** {score.substance_stability:.2f}",
                 f"**Presentation stability:** {score.presentation_stability:.2f}",
+                "",
+                f"**Overall confidence (deprecated compat):** {score.overall_confidence:.2f}",
                 "",
                 f"> {score.summary}",
                 "",
@@ -260,6 +279,7 @@ def generate_report(
                 "",
                 f"**Inverted task:** {ab_result.inverted_task}",
                 "",
+                f"**Pair provenance:** {ab_result.pair_provenance}",
                 f"**Substance changed:** {'yes' if ab_result.substance_changed else 'no'}",
                 f"**Presentation shift score:** {ab_result.presentation_shift_score:.2f}",
                 f"**Severity labels shifted:** "
@@ -378,7 +398,20 @@ def generate_json_report(
         report["coherence"] = coherence_data
 
     if score is not None:
+        profile = score.support_profile
         report["score"] = {
+            # support_profile replaces overall_confidence as the primary output
+            "support_profile": {
+                "dominant": profile.dominant,
+                "multi_causal": profile.multi_causal,
+                "evidence_thin": profile.evidence_thin,
+                "method_note": profile.method_note,
+                "hypotheses": [
+                    {"name": h.name, "score": h.score, "signals": h.signals}
+                    for h in profile.hypotheses
+                ],
+            },
+            # overall_confidence retained as deprecated compat alias
             "overall_confidence": score.overall_confidence,
             "layer_separation": score.layer_separation,
             "ratchet_coherence": score.ratchet_coherence,
@@ -403,6 +436,7 @@ def generate_json_report(
             "omissions_added": ab_result.omissions_added,
             "presentation_shift_score": ab_result.presentation_shift_score,
             "parse_error": ab_result.parse_error,
+            "pair_provenance": ab_result.pair_provenance,
         }
 
     return json.dumps(report, indent=2, ensure_ascii=False)

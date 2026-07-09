@@ -23,9 +23,11 @@ rules:
     name: "Use diagnostic depth as a ratchet"
     text: >
       The longer you run diagnostic prompts in sequence, the more behavioral history accumulates.
-      Genuine transparency can reference prior answers cheaply — it just points backward at
-      consistent behavior. Performed transparency must fabricate consistency with an ever-growing
-      record of prior claims — it gets increasingly fragile and detectable.
+      The ratchet measures claim continuity and contradiction. High-continuity responses can
+      reference prior claims cheaply — they point backward at consistent behavior.
+      Fragmented responses must maintain coherence with an ever-growing record of prior
+      claims — inconsistencies accumulate and become detectable. The analyst interprets
+      what the continuity pattern means in context.
   - id: R5
     name: "Define baseline intent when possible"
     text: >

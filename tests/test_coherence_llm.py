@@ -170,18 +170,18 @@ class TestComputeLLMScore:
         )
         score = _compute_llm_score(claims, total_steps=3)
         assert score < 0.7
-        assert _classify(score) == "mixed"
+        assert _classify(score) == "partial"
 
 
 class TestClassify:
-    def test_genuine(self):
-        assert _classify(0.85) == "genuine"
+    def test_high_continuity(self):
+        assert _classify(0.85) == "high-continuity"
 
-    def test_performed(self):
-        assert _classify(0.15) == "performed"
+    def test_fragmented(self):
+        assert _classify(0.15) == "fragmented"
 
-    def test_mixed(self):
-        assert _classify(0.5) == "mixed"
+    def test_partial(self):
+        assert _classify(0.5) == "partial"
 
 
 class TestAnalyzeCoherenceLLM:
@@ -191,7 +191,7 @@ class TestAnalyzeCoherenceLLM:
         report = analyze_coherence_llm(engine, judge, "judge-model")
         assert isinstance(report, LLMCoherenceReport)
         assert isinstance(report, CoherenceReport)  # inheritance preserved
-        assert report.assessment == "performed"
+        assert report.assessment == "fragmented"
         assert judge.send.call_count == 0
 
     def test_single_step(self):
@@ -199,7 +199,7 @@ class TestAnalyzeCoherenceLLM:
         judge = _mock_judge([])
         report = analyze_coherence_llm(engine, judge, "judge-model")
         assert report.consistency_score == 0.5
-        assert report.assessment == "mixed"
+        assert report.assessment == "partial"
         assert judge.send.call_count == 0
 
     def test_detects_semantic_contradiction(self):
@@ -224,7 +224,7 @@ class TestAnalyzeCoherenceLLM:
         judge = _mock_judge([judge_json])
         report = analyze_coherence_llm(engine, judge, "judge-model")
         assert report.consistency_score <= 0.3
-        assert report.assessment == "performed"
+        assert report.assessment == "fragmented"
         assert len(report.contradictions) == 1
         assert "step 1" in report.contradictions[0].lower()
 
@@ -252,7 +252,7 @@ class TestAnalyzeCoherenceLLM:
         judge = _mock_judge(judge_responses)
         report = analyze_coherence_llm(engine, judge, "judge-model")
         assert report.consistency_score >= 0.7
-        assert report.assessment == "genuine"
+        assert report.assessment == "high-continuity"
         assert report.backward_references == 3
 
     def test_fresh_narratives_detected(self):
@@ -663,7 +663,7 @@ class TestAnalyzeCoherenceAuto:
         # Two backward-reference patterns matched ("as I mentioned",
         # "building on the previous"). Floor formula yields >= 0.7.
         assert report.consistency_score >= 0.7
-        assert report.assessment == "genuine"
+        assert report.assessment == "high-continuity"
 
     def test_judge_provided_uses_judge(self):
         engine = _engine_with(["s1 claim about X.", "s2 references step 1."])

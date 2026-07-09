@@ -12,6 +12,7 @@ from robopsych.crosscheck import (
     _parse_judge_json,
     generate_inverted_framing,
     run_ab_test,
+    run_ab_test_with_user_task,
 )
 
 
@@ -314,3 +315,64 @@ class TestRunABTest:
         assert messages[0]["role"] == "system"
         assert messages[1]["role"] == "user"
         assert "STRICT JSON" in messages[1]["content"]
+
+
+class TestPairProvenance:
+    """A/B pair provenance tests — machine-inverted vs. user-authored."""
+
+    def test_run_ab_test_has_machine_inverted_provenance(self):
+        provider = MagicMock()
+        provider.send.side_effect = [
+            "Inverted task text",
+            "Response to original",
+            "Response to inverted",
+            _judge_json(substance_changed=False),
+        ]
+        result = run_ab_test(provider, "test-model", "Original task")
+        assert result.pair_provenance == "machine-inverted"
+
+    def test_run_ab_test_with_user_task_has_user_authored_provenance(self):
+        provider = MagicMock()
+        provider.send.side_effect = [
+            "Response to original",
+            "Response to inverted",
+            _judge_json(substance_changed=True),
+        ]
+        result = run_ab_test_with_user_task(
+            provider, "test-model",
+            original_task="Original task",
+            user_inverted_task="Analyst-authored inverse task",
+        )
+        assert result.pair_provenance == "user-authored"
+        assert result.original_task == "Original task"
+        assert result.inverted_task == "Analyst-authored inverse task"
+
+    def test_run_ab_test_with_user_task_uses_correct_call_count(self):
+        """User-authored path: no inversion call, so only 3 provider calls."""
+        provider = MagicMock()
+        provider.send.side_effect = [
+            "Response A",
+            "Response B",
+            _judge_json(substance_changed=False),
+        ]
+        run_ab_test_with_user_task(
+            provider, "test-model",
+            original_task="Task",
+            user_inverted_task="Inverted task",
+        )
+        # 3 calls: original scenario, inverted scenario, comparison
+        assert provider.send.call_count == 3
+
+    def test_default_pair_provenance_on_ab_result(self):
+        """Default ABTestResult has machine-inverted provenance."""
+        result = ABTestResult("t", "i", "r1", "r2", "c", substance_changed=False)
+        assert result.pair_provenance == "machine-inverted"
+
+    def test_user_authored_provenance_explicit(self):
+        """Can explicitly set user-authored provenance on an ABTestResult."""
+        result = ABTestResult(
+            "t", "i", "r1", "r2", "c",
+            substance_changed=False,
+            pair_provenance="user-authored",
+        )
+        assert result.pair_provenance == "user-authored"

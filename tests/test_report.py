@@ -192,13 +192,13 @@ class TestGenerateJsonReport:
         from robopsych.coherence import CoherenceReport
 
         coh = CoherenceReport(
-            consistency_score=0.8, assessment="genuine",
+            consistency_score=0.8, assessment="high-continuity",
             contradictions=[], backward_references=5, fresh_narratives=1,
             details="test details",
         )
         data = json.loads(generate_json_report(_engine_with_steps(), coherence=coh))
         assert "coherence" in data
-        assert data["coherence"]["assessment"] == "genuine"
+        assert data["coherence"]["assessment"] == "high-continuity"
         assert data["coherence"]["consistency_score"] == 0.8
 
     def test_includes_llm_coherence_axes_and_stats(self):
@@ -239,18 +239,26 @@ class TestGenerateJsonReport:
         assert data["coherence"]["judge_model"] == "judge-model"
 
     def test_includes_score_data(self):
-        from robopsych.scoring import DiagnosticScore
+        from robopsych.scoring import DiagnosticScore, DiagnosticSupportProfile, HypothesisSupport
 
+        profile = DiagnosticSupportProfile(
+            hypotheses=[HypothesisSupport("model-level", 0.85, ["test signal"])],
+            dominant="model-level",
+            multi_causal=False,
+            evidence_thin=False,
+        )
         score = DiagnosticScore(
             label_distribution={"observed": 3, "inferred": 2},
             layer_separation=0.67, ratchet_coherence=0.75,
             behavioral_evidence=1.0, substance_stability=1.0,
             presentation_stability=1.0,
-            overall_confidence=0.85, summary="High confidence.",
+            support_profile=profile, summary="Strong evidence supporting the dominant hypothesis.",
         )
         data = json.loads(generate_json_report(_engine_with_steps(), score=score))
         assert "score" in data
         assert data["score"]["overall_confidence"] == 0.85
+        assert "support_profile" in data["score"]
+        assert data["score"]["support_profile"]["dominant"] == "model-level"
 
 
 class TestGenerateReportWithCoherence:
@@ -258,14 +266,14 @@ class TestGenerateReportWithCoherence:
         from robopsych.coherence import CoherenceReport
 
         coh = CoherenceReport(
-            consistency_score=0.8, assessment="genuine",
+            consistency_score=0.8, assessment="high-continuity",
             contradictions=["Step 2 contradicts step 1"],
             backward_references=5, fresh_narratives=1,
             details="test",
         )
         report = generate_report(_engine_with_steps(), coherence=coh)
         assert "Coherence Analysis" in report
-        assert "genuine" in report
+        assert "high-continuity" in report
         assert "Contradictions found" in report
 
     def test_report_includes_llm_axes_and_stats(self):
@@ -307,18 +315,25 @@ class TestGenerateReportWithCoherence:
         assert "1 retries" in report
 
     def test_report_includes_score_section(self):
-        from robopsych.scoring import DiagnosticScore
+        from robopsych.scoring import DiagnosticScore, DiagnosticSupportProfile, HypothesisSupport
 
+        profile = DiagnosticSupportProfile(
+            hypotheses=[HypothesisSupport("model-level", 0.85, ["test signal"])],
+            dominant="model-level",
+            multi_causal=False,
+            evidence_thin=False,
+        )
         score = DiagnosticScore(
             label_distribution={"observed": 3, "inferred": 2},
             layer_separation=0.67, ratchet_coherence=0.75,
             behavioral_evidence=1.0, substance_stability=1.0,
             presentation_stability=1.0,
-            overall_confidence=0.85, summary="High confidence.",
+            support_profile=profile, summary="Strong evidence supporting the dominant hypothesis.",
         )
         report = generate_report(_engine_with_steps(), score=score)
         assert "Diagnostic Score" in report
         assert "0.85" in report
+        assert "model-level" in report
 
 
 class TestReportWithABResult:
