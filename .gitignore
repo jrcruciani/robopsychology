@@ -1,21 +1,15 @@
-# Python
+# Local Python files
 __pycache__/
 *.py[cod]
-*.egg-info/
-dist/
-build/
 .venv/
-*.egg
+venv/
 
-# Generated reports (examples keep only the scenario YAML)
-examples/*-report.md
-validation/reproducible/**/artifacts/run-*/
-validation/reproducible/**/artifacts/**/error.json
-
-# IDE
+# Editor caches
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# OS
+# Local OS metadata
 .DS_Store
-.coverage

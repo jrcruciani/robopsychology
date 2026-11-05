@@ -1,6 +1,6 @@
 # Manual Diagnosis Workflow
 
-Use this path when you want the framework, not the CLI.
+Use these steps in a chat or with a saved transcript.
 
 ## 5-minute path
 

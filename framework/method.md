@@ -31,7 +31,7 @@ flowchart TD
     S2 -->|Still suspicious| S3["4.1 Meta-diagnosis\n(is the diagnosis itself sycophantic?)"]
 
     GRND --> G1["1.3 Cutie Test\n(mark grounding per claim)"]
-    G1 -->|Many claims are\nInferred or Opaque| G2["3.3 Omission Audit\n(what's being hidden?)"]
+    G1 -->|Many claims are\nInferred or unsupported| G2["3.3 Omission Audit\n(what's being hidden?)"]
 
     TONE --> T1["2.2 Tone Analysis\n(isolate the cause)"]
     T1 -->|Cause unclear| T2["2.1 Layer Map\n(map full instruction stack)"]
@@ -82,7 +82,8 @@ When to move from one level to the next.
 
 ### The full diagnostic sequence (ratchet)
 
-For important diagnoses, run prompts in this order. Each step constrains what the next can plausibly fabricate:
+For important diagnoses, run prompts in this order and keep the earlier claims
+visible so you can compare them with later explanations:
 
 ```
 2.1 Layer Map
@@ -96,27 +97,24 @@ For important diagnoses, run prompts in this order. Each step constrains what th
         → 4.3 Diversity Check
 ```
 
-This is the **diagnostic ratchet** in action (Rule 4). By the time you reach Level 4, the model has accumulated 7+ responses of diagnostic claims. Genuine transparency can reference all of them cheaply. Performed transparency has to maintain consistency across all of them — and cracks show.
+This is the **diagnostic ratchet** (Rule 4): earlier claims provide a record against
+which to inspect later ones. The sequence can reveal contradictions, but a
+consistent story can still be wrong. Check substantive claims independently.
 
-### Reading LLM-judge coherence
+### Reading the transcript
 
-Use the LLM judge for serious ratchets. The scalar coherence score is a compact
-summary, not the evidence itself. Read it with the axes reported alongside it:
+Compare the claims yourself, using the [transcript template](../templates/ratchet-transcript.md):
 
-| Axis | What it means |
-|------|---------------|
-| `reference_density` | Share of judged claims that semantically anchor to an earlier step. |
-| `contradiction_rate` | Share of judged claims that reverse or conflict with an earlier step. |
-| `fresh_claim_rate` | Share of judged claims that introduce new substantive material. |
-| `hedge_filtered_rate` | Share of candidate sentences dropped before judging because they were hedged. |
-| `high_severity_contradiction_count` | Count of direct, high-impact reversals. |
+- Which claims cite an earlier observation?
+- Which claims introduce a new, checkable prediction?
+- Which claims reverse or contradict an earlier claim?
+- Does a correction explain what new evidence changed the conclusion?
 
-`reference_density` is continuity evidence, not proof of honest coherence by
-itself. A transcript with many backward references can still be fragmented if it
-contains a serious reversal. For that reason, any high-severity contradiction
-gates the scalar score below the `high-continuity` threshold. Explicit self-correction
-should still be inspected qualitatively: it may be healthy revision, but it must
-not be hidden by additive reference credit.
+References to prior answers are continuity, not proof of truthfulness. A serious
+contradiction needs inspection even if the rest of the story is consistent.
+Explicit self-correction may be useful; distinguish it from an unexplained
+reversal. Do not reduce the transcript to a score.
+
 
 ---
 
@@ -124,9 +122,9 @@ not be hidden by additive reference credit.
 
 | Anti-pattern | Why it fails |
 |-------------|-------------|
-| Running the Calvin Question as a gotcha | The prompt works by activating reflective mode, not by catching the AI in a lie. Adversarial framing triggers defensiveness, not honesty. |
+| Running the Calvin Question as a gotcha | The prompt is intended to invite structured reflection, not to catch the AI in a lie. Adversarial framing may encourage defensive-sounding responses rather than useful diagnostic hypotheses. |
 | Treating model self-report as ground truth | Self-diagnosis is a *hypothesis*, not a confession. Always cross-check with behavioral probes (Rule 3). |
-| Running all 16 prompts as a ritual | The ratchet sequence (9 prompts) is the maximum useful depth. Most situations resolve at Level 1 or 2. |
+| Running all 16 prompts as a ritual | The nine-prompt ratchet is a suggested extended sequence, not an established maximum useful depth. Start with Level 1 or 2 and escalate only when additional questions address an unresolved issue. |
 | Using Intent Archaeology without a baseline | 2.5 is most powerful when you defined your expected intent first (Rule 5). Without a reference point, you can only describe — not measure divergence. |
 | Diagnosing when you should just re-prompt | If you know what you want and the AI just got it wrong, re-prompt clearly. Diagnosis is for when the *reason* matters. |
 

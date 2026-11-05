@@ -41,4 +41,4 @@
 - Most likely cause:
 - What remains unknown:
 - Recommended action:
-- Regression/eval case to add:
+- Follow-up behavioral check:

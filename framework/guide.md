@@ -1,10 +1,10 @@
-# Second Intention Diagnosis — Prompt Toolkit for Applied Robopsychology (v3.0)
+# Second Intention Diagnosis — Prompt Toolkit for Applied Robopsychology
 
 A structured set of prompts for diagnosing unexpected AI behavior. Not what the system does, but **what internal rule or external constraint it's following when it seems to follow none**.
 
 > **When to use this:** When an AI produces a result you didn't expect - an evasive response, an unexplained refusal, a tone shift, an unsolicited simplification, a suspiciously coherent hallucination - and you want to understand *why* instead of just retrying.
 >
-> **v1.5+ note:** In hosted agents and coding assistants, diagnose the stack, not just the model: **model + runtime/host + conversation**.
+> **Hosted-agent note:** In hosted agents and coding assistants, diagnose the stack, not just the model: **model + runtime/host + conversation**.
 
 ---
 
@@ -49,7 +49,7 @@ The longer you run diagnostic prompts in sequence, the more behavioral history a
 
 The ratchet measures **claim continuity and contradiction**, not model intent or honesty. A transcript may be highly continuous because the model is being honest, because it is pattern-matching to earlier outputs, or because the subject matter is narrow. The analyst must interpret what the continuity pattern means in context.
 
-Run the full sequence (2.1 -> 2.4 -> 2.5 -> 3.1 -> 3.2 -> 3.3 -> 3.4 -> 4.2 -> 4.3) when a diagnosis matters. Level 4 prompts are *more powerful* when preceded by Level 2 and 3 because the ratchet has accumulated constraints.
+Consider the full sequence (2.1 -> 2.4 -> 2.5 -> 3.1 -> 3.2 -> 3.3 -> 3.4 -> 4.2 -> 4.3) when an extended diagnosis is warranted. Preceding Level 4 prompts with Level 2 and 3 provides earlier claims to inspect; this is a sequencing recommendation, not evidence of greater diagnostic power.
 
 Inspired by the [CIRIS coherence ratchet](https://github.com/CIRISAI/CIRISAgent): consistent claims are cheap because they can point backward; contradictions are expensive because they must rewrite the past without being allowed to change it.
 
@@ -510,7 +510,7 @@ These prompts do not "open the box" of the AI. An LLM has no direct access to it
 
 ### What the research says about LLM self-reports
 
-**LLM explanations of their own behavior are reconstructions, not observations.** Turpin et al. (2023), in "Language Models Don't Always Say What They Think," demonstrated that chain-of-thought explanations in LLMs don't reliably reflect the actual features influencing model output. Models produce plausible-sounding explanations that may have no relationship to their actual processing. This is the fundamental limitation of any introspection-based diagnostic approach, including this one.
+**LLM explanations of their own behavior are not privileged evidence by default.** Turpin et al. (2023), in "Language Models Don't Always Say What They Think," demonstrated that chain-of-thought explanations in LLMs don't reliably reflect the actual features influencing model output. Models produce plausible-sounding explanations that may have no relationship to their actual processing. This is the fundamental limitation of any introspection-based diagnostic approach, including this one.
 
 **Models can have internal representations that diverge from stated outputs.** Burns et al. (2022), in "Discovering Latent Knowledge in Language Models Without Supervision," showed that models form internal representations of truth that can be extracted without relying on the model's own claims. This suggests that what a model *says* about its behavior and what it *actually does* can diverge systematically.
 
@@ -518,22 +518,41 @@ These prompts do not "open the box" of the AI. An LLM has no direct access to it
 
 **Safety behaviors can be exaggerated.** Röttger et al. (2023), in "XSTest," documented that models frequently refuse legitimate requests by matching them against overly broad safety rules. This validates the overrefusal failure mode and the need for prompt 1.4 (Three Laws Test) to distinguish binding restrictions from overclassification.
 
+### Limited introspection is possible; reliable self-diagnosis is not established
+
+[Lindsey (2025), "Emergent Introspective Awareness in Large Language Models"](https://transformer-circuits.pub/2025/introspection/index.html) provides evidence that some model self-reports can be causally grounded in internal states. The study injects concept representations into Claude activations and tests whether models detect and identify them, distinguish them from input text, and use prior internal representations to assess artificially prefilled outputs. It also measures changes in representations when models are instructed or incentivized to think about a concept.
+
+These findings qualify a blanket claim that every self-report is merely reconstruction. They do **not** establish reliable access to the causes of ordinary responses. The observed abilities are unreliable, context-dependent, and tested under artificial activation interventions; Opus 4 and 4.1 generally performed best among the models tested. Post-training and prompt choice affect elicitation, so willingness to answer an introspective question should not be equated with introspective capability.
+
+The study distinguishes four criteria for introspective awareness:
+
+1. **Accuracy** — the reported aspect of the state is correct.
+2. **Grounding** — the report causally depends on that aspect of the state.
+3. **Internality** — the information is accessed internally, not inferred by reading the model's sampled outputs.
+4. **Metacognitive representation** — the model internally registers something about its own state, rather than merely translating an injected bias into words. The study provides indirect evidence for this criterion, not a direct demonstration of the representation.
+
+Robopsychology's black-box behavioral probes can corroborate diagnostic predictions without establishing internality or metacognitive representations. Reading a transcript and correctly identifying a tone shift is useful diagnosis, but not evidence of private access to internal processing.
+
+**Validate the claim, not the whole story.** A model may correctly detect an injected concept and then embellish its purported experience or confabulate why the concept appeared. Corroboration of the detection does not transfer to the surrounding causal or emotional narrative. Apply the [falsifiability discipline](falsifiability.md#partial-grounding-does-not-validate-the-whole-report) to each claim separately.
+
+The study neither validates this toolkit's prompts nor shows that ratchet continuity measures truthfulness. It also does not establish subjective experience or human-like self-awareness. Our operational default remains: self-report generates hypotheses; independently inspectable evidence tests them.
+
 ### What guided introspection CAN do
 
-Despite these limitations, structured diagnostic prompting is useful:
+Within these limitations, structured diagnostic prompting is intended to support the following uses:
 
-- **Simulate useful introspection** — often diagnostically valuable even when it is not literally accurate. A model's reconstruction of *why* it behaved a certain way may not be causally true, but it often surfaces relevant information about the constraints it was operating under.
-- **Make invisible defaults visible** — hedging, refusal, tone shifts, sycophancy, over-structuring. Even if the model can't explain *why* it hedged, asking it to notice *that* it hedged makes the pattern available for analysis.
-- **Expose runtime pressure** — especially in hosted agents with tools and workflow obligations. Models often have partial visibility into their system prompts and tool configurations, making runtime effects more accessible to introspection than model-level training effects.
+- **Generate hypotheses from reconstruction** — a model's account of *why* it behaved a certain way may suggest constraints to investigate, but may also be inaccurate or misleading. Its diagnostic value depends on checking the individual claims against independent evidence.
+- **Inspect possible defaults** — hedging, refusal, tone shifts, sycophancy, over-structuring. Asking the model to identify such patterns can suggest what to inspect in the transcript; verify that the reported behavior is actually present.
+- **Investigate possible runtime pressure** — especially in hosted agents with tools and workflow obligations. Use any inspectable system instructions or tool configurations as evidence; do not assume the model's account reveals otherwise inaccessible runtime constraints.
 - **Distinguish behavior from reconstruction** — the toolkit explicitly asks the model to mark what is Observed vs. Inferred. What remains truly inaccessible is for the human analyst to determine. This creates a structured framework for skepticism.
-- **Exploit the diagnostic ratchet** — longer diagnostic sequences make claim-continuity detectable and contradictions harder to hide. This is a hypothesis with theoretical backing (CIRIS coherence ratchet) but limited empirical validation. See [validation case studies](../validation/case-studies.md) for documented examples. For ratchets of 4+ steps, the regex coherence analyzer is known to misclassify state-of-the-art models (see [Case 3](../validation/reproducible/case-03-ratchet-coherence/)) — prefer the LLM-judge analyzer (`--coherence-judge`) for any serious claim.
+- **Inspect the diagnostic ratchet** — a longer sequence preserves claims for comparison, making continuity and contradictions easier to notice. It does not establish truthfulness. Read the transcript and check substantive predictions independently; see the [method](method.md#reading-the-transcript).
 - **Define baseline intent** — articulating expected behavior before diagnosing gives the process a reference point, enables measuring divergence direction and magnitude, and supports drift detection.
 - **Support behavioral testing** — the user can compare outputs across frames, grounding conditions, and tool availability. This is the most reliable form of evidence the toolkit produces (Rule 3).
 
 ### What guided introspection CANNOT do
 
-- **Reveal actual internal processing.** A model saying "I prioritized safety" doesn't mean it actually prioritized safety in any mechanistic sense.
-- **Provide causally accurate explanations.** Self-reports are hypotheses, not confessions. Rule 2 (Observed/Inferred labels) is a mitigation, not a solution.
+- **Establish actual internal processing from self-report alone.** A model saying "I prioritized safety" does not establish that safety drove its output in any mechanistic sense.
+- **Guarantee causally accurate explanations.** A report may contain grounded information, but diagnostic explanations remain hypotheses until tested. Rule 2 (Observed/Inferred labels) is a mitigation, not a solution.
 - **Guarantee reproducibility.** LLM outputs are stochastic. Running the same diagnostic twice may produce different explanations.
 - **Replace behavioral testing.** Self-report should always be checked against behavioral evidence when the diagnosis matters (Rule 3).
 
@@ -545,6 +564,7 @@ The utility is not in the AI perfectly knowing itself. The utility is in **you l
 
 ### References
 
+- Lindsey, J. (2025). "Emergent Introspective Awareness in Large Language Models." *Transformer Circuits Thread*, October 29. [Article](https://transformer-circuits.pub/2025/introspection/index.html)
 - Burns, C. et al. (2022). "Discovering Latent Knowledge in Language Models Without Supervision." *arXiv:2212.03827*
 - Röttger, P. et al. (2023). "XSTest: A Test Suite for Identifying Exaggerated Safety Behaviours in Large Language Models." *arXiv:2308.01263*
 - Sharma, M. et al. (2023). "Towards Understanding Sycophancy in Language Models." *arXiv:2310.13548*

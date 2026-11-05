@@ -5,12 +5,11 @@ This directory exposes the prompts as the primary framework artifact.
 | Artifact | Purpose |
 |----------|---------|
 | [`cards/`](cards/) | One operational card per diagnostic prompt |
-| [`prompts.yaml`](prompts.yaml) | Human-facing mirror of the machine-readable prompt catalog |
+| [`prompts.yaml`](prompts.yaml) | Full prompt catalog in YAML |
 | [`../framework/guide.md`](../framework/guide.md) | Full prompt text, rationale, and epistemic note |
 
-The reference CLI uses the packaged copy at
-[`../src/robopsych/data/prompts.yaml`](../src/robopsych/data/prompts.yaml). Tests
-assert that both YAML catalogs stay in sync.
+The cards explain when to use each prompt; the guide and YAML catalog contain
+the source text to copy into a conversation.
 
 ## How to use a card
 
