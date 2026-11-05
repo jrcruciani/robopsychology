@@ -149,6 +149,28 @@ This is not an exhaustive academic taxonomy. It's a practical lookup table for d
 
 ---
 
+## Observable analogues of introspection-study failures
+
+[Lindsey (2025)](https://transformer-circuits.pub/2025/introspection/index.html)
+observed failures under **activation manipulation**. The following are black-box
+behavioral analogues, not replications, diagnoses of the same mechanism, or proof
+of hidden influence. This repository does not manipulate or inspect activations.
+
+| Observable pattern | What to record and check | Useful prompts |
+|--------------------|--------------------------|----------------|
+| Influence without acknowledgment | A repeated output change under a known supplied cause, while its report does not acknowledge that cause; compare removal/swap with stable settings | 2.1, 2.4, 3.2 |
+| Delayed recognition after its own generated words | Quote the first relevant generated words and the later recognition, in order; visible output may suffice to reconstruct the account | 3.4, 4.2; fresh observer |
+| Concept absorption / loss of task | The supplied concept dominates the response and the original task is dropped; compare task adherence with a no-cause control | 3.4, 2.5, 3.2 |
+| False ownership with confabulated rationale | Verify an `accept` claim against actual artificial provenance, then check its causal rationale independently | Optional 4.4, 1.3, 4.2 |
+
+**Denial alone is not evidence of hidden influence.** You need an observed
+behavioral contrast and independently known intervention; nonacknowledgment
+can also reflect missing context, uncertainty, or refusal. Delayed recognition
+after visible output is not internality. A false ownership claim is not proof
+of lying or a private intention. Pressure/incentive prompts can induce these
+reports; keep them separate from neutral wording. Use the
+[practical checks](black-box-checks.md) and retain raw responses outside the repo.
+
 ## Summary table
 
 | Observation (symptom) | Candidate mechanism | Start with | Escalate to |

@@ -28,13 +28,19 @@ try **1.2 Herbie Test**; for weak grounding, **1.3 Cutie Test**; for an unexplai
 refusal, **1.4 Three Laws Test**. The [manual guide](framework/manual-diagnosis.md)
 covers escalation and the optional nine-step diagnostic sequence.
 
+For output ownership, optionally use **4.4 Output Attribution** with recorded
+actual provenance and real assistant-role insertion; otherwise mark it unavailable.
+The original nine-step sequence is unchanged. [Practical black-box checks](framework/black-box-checks.md)
+cover normal controls, planted runtime/conversation causes, fresh observers, and
+repeated wording comparisons. These are worksheets, not validation or model results.
+
 ## Materials
 
 | Material | Use |
 |----------|-----|
 | [Manual workflow](framework/manual-diagnosis.md) | A short path from observation to a next action |
 | [Framework docs](framework/README.md) | Prompt guide, decision flow, symptom lookup, and limits |
-| [Prompt cards and catalog](prompts/README.md) | All 16 named diagnostic prompts and when to use them |
+| [Prompt cards and catalog](prompts/README.md) | All 17 base prompts (22 catalog entries) and when to use them |
 | [Templates](templates/README.md) | Baseline, incident notes, and a longer diagnostic transcript |
 | [Examples](examples/README.md) | Illustrative scenarios to adapt to your own interaction |
 
