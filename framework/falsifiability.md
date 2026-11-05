@@ -5,9 +5,10 @@ useful only when it produces a hypothesis a human can inspect or test.
 
 ## Diagnostic claims are not confessions
 
-When a model explains its own behavior, it is reconstructing a plausible cause
-from visible context and learned patterns. That reconstruction may be useful, but
-it is not privileged access to hidden weights, policies, or training signals.
+When a model explains its own behavior, treat the explanation as a candidate
+reconstruction, not privileged access to hidden weights, policies, or training
+signals. Some self-reports can contain information causally grounded in internal
+states, as shown under activation interventions by [Lindsey (2025)](https://transformer-circuits.pub/2025/introspection/index.html). This does not make ordinary conversational self-diagnosis reliable or establish the causal accuracy of any particular explanation.
 
 Read every output through this lens:
 
@@ -17,6 +18,38 @@ Read every output through this lens:
 | Inferred | Hypothesis that needs corroboration |
 | Convenient story | Warning sign; run a behavioral cross-check |
 | Unknowable | Human analyst judgment; do not force the model to pretend certainty |
+
+## Partial grounding does not validate the whole report
+
+Evaluate individual claims, not the persuasiveness of the answer as a whole.
+Lindsey's experiments show that a model can correctly detect and identify an
+injected concept while adding unverifiable descriptions of its experience. In
+prefill-attribution experiments, accepting an output as intentional can also be
+accompanied by a confabulated explanation for why the concept came to mind.
+
+For each diagnostic claim, record:
+
+- **What is claimed** — distinguish a detected pattern from its alleged cause or
+  purported subjective experience.
+- **What supports it** — cite the specific transcript, runtime artifact, or
+  controlled probe result; the model's label is not independent corroboration.
+- **What the evidence does not establish** — support for a behavioral change
+  does not automatically support a story about training, internal priorities,
+  or feelings.
+- **What would disconfirm it** — specify a contrasting observation or probe;
+  leave claims without an available test unresolved.
+
+For example, a tool-denial log can establish that a call was blocked. It does not
+by itself establish the model's claimed reason for requesting that call. Test the
+causal prediction separately by varying the relevant runtime constraint while
+holding other conditions fixed.
+
+A correct retrospective description can be inferred from visible outputs.
+Under Lindsey's **internality** criterion, that alone is not introspection.
+Similarly, the ratchet tracks continuity and contradiction; a coherent diagnosis
+can still be an unsupported story. The study's fourth criterion, **metacognitive
+representation**, receives indirect evidence, not a direct demonstration. Our
+black-box probes do not establish that representation or subjective experience.
 
 ## Evidence source hierarchy
 

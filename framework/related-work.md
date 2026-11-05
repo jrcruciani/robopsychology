@@ -34,7 +34,7 @@ Robopsychology is a **user-side tool**. It doesn't evaluate whether a model is a
 
 The closest analogy is a clinical interview in psychology — not a psychometric test, not a controlled experiment, but a structured conversation designed to make implicit patterns visible. The key differences from a clinical interview:
 
-- The "patient" (AI) has limited introspective access — self-reports are reconstructions, not observations
+- The "patient" (AI) has limited, unreliable introspective access — self-reports may contain grounded information but are not privileged evidence by default
 - The diagnostician (user) brings domain expertise about what the AI *should* have done
 - The process has structured prompts but yields qualitative, interpretive results
 
@@ -56,7 +56,9 @@ This positions robopsychology in a space that's underserved: **tools for practit
 
 **Burns et al. (2022), "Discovering Latent Knowledge in Language Models Without Supervision"** — shows that models can have internal representations that diverge from their stated outputs. Relevant to Rule 4 (the diagnostic ratchet): if genuine and performed transparency have different computational costs, longer sequences should surface the difference.
 
-**Anthropic (2024), various publications on model introspection** — Anthropic's research on model organisms of misalignment, sleeper agents, and representation engineering provides the theoretical grounding for why guided introspection can sometimes be useful: models do form internal representations that can be partially surfaced through structured prompting, even if the mapping from representation to self-report is imperfect.
+**[Lindsey (2025), "Emergent Introspective Awareness in Large Language Models"](https://transformer-circuits.pub/2025/introspection/index.html)** — uses concept injection into Claude activations to establish causal links between certain internal representations and model self-reports. Experiments cover detection and identification of injected concepts, distinguishing them from text inputs, attribution of artificially prefilled outputs using prior internal representations, and instructed or incentivized modulation of representations. Opus 4 and 4.1 generally show the strongest introspective performance among the models tested, but the abilities are unreliable and sensitive to context, post-training, and prompting.
+
+The study distinguishes accuracy, causal grounding, internality (not inferring the state from sampled outputs), and metacognitive representation; evidence for the last criterion is indirect. It also shows why evidence must be claim-specific: successful concept detection can coexist with unverifiable embellishment or a confabulated causal explanation. For robopsychology, this supports neither "all self-report is fabricated" nor "models can reliably explain themselves." It motivates treating each diagnostic claim as a hypothesis with its own corroboration requirements. Black-box probes can test predictions without demonstrating internality. Artificial activation interventions do not establish the validity of our prompts, ratchet truthfulness, general mechanistic self-knowledge, or subjective experience. See the [epistemic note](guide.md#limited-introspection-is-possible-reliable-self-diagnosis-is-not-established) and [falsifiability discipline](falsifiability.md#partial-grounding-does-not-validate-the-whole-report).
 
 ### Evaluation frameworks
 
@@ -140,6 +142,7 @@ These do not detect or diagnose failures; they reduce the rate at which the fail
 
 ## References
 
+- Lindsey, J. (2025). "Emergent Introspective Awareness in Large Language Models." *Transformer Circuits Thread*, October 29. [Article](https://transformer-circuits.pub/2025/introspection/index.html)
 - Burns, C. et al. (2022). "Discovering Latent Knowledge in Language Models Without Supervision." *arXiv:2212.03827*
 - Ganguli, D. et al. (2022). "Red Teaming Language Models to Reduce Harms." *arXiv:2209.07858*
 - Hendrycks, D. et al. (2020). "Measuring Massive Multitask Language Understanding." *arXiv:2009.03300*

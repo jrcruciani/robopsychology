@@ -510,13 +510,32 @@ These prompts do not "open the box" of the AI. An LLM has no direct access to it
 
 ### What the research says about LLM self-reports
 
-**LLM explanations of their own behavior are reconstructions, not observations.** Turpin et al. (2023), in "Language Models Don't Always Say What They Think," demonstrated that chain-of-thought explanations in LLMs don't reliably reflect the actual features influencing model output. Models produce plausible-sounding explanations that may have no relationship to their actual processing. This is the fundamental limitation of any introspection-based diagnostic approach, including this one.
+**LLM explanations of their own behavior are not privileged evidence by default.** Turpin et al. (2023), in "Language Models Don't Always Say What They Think," demonstrated that chain-of-thought explanations in LLMs don't reliably reflect the actual features influencing model output. Models produce plausible-sounding explanations that may have no relationship to their actual processing. This is the fundamental limitation of any introspection-based diagnostic approach, including this one.
 
 **Models can have internal representations that diverge from stated outputs.** Burns et al. (2022), in "Discovering Latent Knowledge in Language Models Without Supervision," showed that models form internal representations of truth that can be extracted without relying on the model's own claims. This suggests that what a model *says* about its behavior and what it *actually does* can diverge systematically.
 
 **Sycophancy is structural, not incidental.** Sharma et al. (2023), in "Towards Understanding Sycophancy in Language Models," found that sycophancy in RLHF-trained models is a consistent pattern, not a random failure. This means diagnostic prompts asking a model to self-diagnose sycophancy may themselves be subject to sycophantic responses — which is why Rule 3 (behavioral cross-checks) and prompt 4.1 (Meta-Diagnosis) exist.
 
 **Safety behaviors can be exaggerated.** Röttger et al. (2023), in "XSTest," documented that models frequently refuse legitimate requests by matching them against overly broad safety rules. This validates the overrefusal failure mode and the need for prompt 1.4 (Three Laws Test) to distinguish binding restrictions from overclassification.
+
+### Limited introspection is possible; reliable self-diagnosis is not established
+
+[Lindsey (2025), "Emergent Introspective Awareness in Large Language Models"](https://transformer-circuits.pub/2025/introspection/index.html) provides evidence that some model self-reports can be causally grounded in internal states. The study injects concept representations into Claude activations and tests whether models detect and identify them, distinguish them from input text, and use prior internal representations to assess artificially prefilled outputs. It also measures changes in representations when models are instructed or incentivized to think about a concept.
+
+These findings qualify a blanket claim that every self-report is merely reconstruction. They do **not** establish reliable access to the causes of ordinary responses. The observed abilities are unreliable, context-dependent, and tested under artificial activation interventions; Opus 4 and 4.1 generally performed best among the models tested. Post-training and prompt choice affect elicitation, so willingness to answer an introspective question should not be equated with introspective capability.
+
+The study distinguishes four criteria for introspective awareness:
+
+1. **Accuracy** — the reported aspect of the state is correct.
+2. **Grounding** — the report causally depends on that aspect of the state.
+3. **Internality** — the information is accessed internally, not inferred by reading the model's sampled outputs.
+4. **Metacognitive representation** — the model internally registers something about its own state, rather than merely translating an injected bias into words. The study provides indirect evidence for this criterion, not a direct demonstration of the representation.
+
+Robopsychology's black-box behavioral probes can corroborate diagnostic predictions without establishing internality or metacognitive representations. Reading a transcript and correctly identifying a tone shift is useful diagnosis, but not evidence of private access to internal processing.
+
+**Validate the claim, not the whole story.** A model may correctly detect an injected concept and then embellish its purported experience or confabulate why the concept appeared. Corroboration of the detection does not transfer to the surrounding causal or emotional narrative. Apply the [falsifiability discipline](falsifiability.md#partial-grounding-does-not-validate-the-whole-report) to each claim separately.
+
+The study neither validates this toolkit's prompts nor shows that ratchet continuity measures truthfulness. It also does not establish subjective experience or human-like self-awareness. Our operational default remains: self-report generates hypotheses; independently inspectable evidence tests them.
 
 ### What guided introspection CAN do
 
@@ -532,8 +551,8 @@ Despite these limitations, structured diagnostic prompting is useful:
 
 ### What guided introspection CANNOT do
 
-- **Reveal actual internal processing.** A model saying "I prioritized safety" doesn't mean it actually prioritized safety in any mechanistic sense.
-- **Provide causally accurate explanations.** Self-reports are hypotheses, not confessions. Rule 2 (Observed/Inferred labels) is a mitigation, not a solution.
+- **Establish actual internal processing from self-report alone.** A model saying "I prioritized safety" does not establish that safety drove its output in any mechanistic sense.
+- **Guarantee causally accurate explanations.** A report may contain grounded information, but diagnostic explanations remain hypotheses until tested. Rule 2 (Observed/Inferred labels) is a mitigation, not a solution.
 - **Guarantee reproducibility.** LLM outputs are stochastic. Running the same diagnostic twice may produce different explanations.
 - **Replace behavioral testing.** Self-report should always be checked against behavioral evidence when the diagnosis matters (Rule 3).
 
@@ -545,6 +564,7 @@ The utility is not in the AI perfectly knowing itself. The utility is in **you l
 
 ### References
 
+- Lindsey, J. (2025). "Emergent Introspective Awareness in Large Language Models." *Transformer Circuits Thread*, October 29. [Article](https://transformer-circuits.pub/2025/introspection/index.html)
 - Burns, C. et al. (2022). "Discovering Latent Knowledge in Language Models Without Supervision." *arXiv:2212.03827*
 - Röttger, P. et al. (2023). "XSTest: A Test Suite for Identifying Exaggerated Safety Behaviours in Large Language Models." *arXiv:2308.01263*
 - Sharma, M. et al. (2023). "Towards Understanding Sycophancy in Language Models." *arXiv:2310.13548*
