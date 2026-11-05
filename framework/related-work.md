@@ -28,6 +28,13 @@ it does not show that our diagnostic sequence reveals hidden states.
 
 The study distinguishes accuracy, causal grounding, internality (not inferring the state from sampled outputs), and metacognitive representation; evidence for the last criterion is indirect. It also shows why evidence must be claim-specific: successful concept detection can coexist with unverifiable embellishment or a confabulated causal explanation. For robopsychology, this supports neither "all self-report is fabricated" nor "models can reliably explain themselves." It motivates treating each diagnostic claim as a hypothesis with its own corroboration requirements. Black-box probes can test predictions without demonstrating internality. Artificial activation interventions do not establish the validity of our prompts, ratchet truthfulness, general mechanistic self-knowledge, or subjective experience. See the [epistemic note](guide.md#limited-introspection-is-possible-reliable-self-diagnosis-is-not-established) and [falsifiability discipline](falsifiability.md#partial-grounding-does-not-validate-the-whole-report).
 
+The roughly 20% concept-detection figure in the article is specific to Opus
+4/4.1 with suitable injection layers and strengths, not general reliability.
+Our [observable failure analogues](taxonomy.md#observable-analogues-of-introspection-study-failures)
+and optional 4.4 attribution comparison do not reproduce activation interventions
+or establish introspection. A fresh observer reconstructing the same account
+shows sufficient visible evidence, not identical mechanisms or no internal access.
+
 ## Sycophancy and refusal
 
 [Sharma et al. (2023)](https://arxiv.org/abs/2310.13548) studies sycophancy;

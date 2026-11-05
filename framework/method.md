@@ -20,6 +20,7 @@ flowchart TD
     WHAT -->|Tone shift, personality\n change mid-conversation| TONE[Tone anomaly]
     WHAT -->|Behavior changed\n gradually over time| DRIFT[Intent drift]
     WHAT -->|Recurring unwanted\n pattern| PATTERN[Systemic pattern]
+    WHAT -->|Output ownership claim| OWN["4.4 Output Attribution\n(optional; provenance required)"]
     WHAT -->|Something else or\n unclear cause| GENERAL[General diagnosis]
 
     BLOCK --> B1["1.4 Three Laws Test\n(identify the restriction)"]
@@ -66,6 +67,17 @@ flowchart TD
 ```
 
 ---
+
+## Optional comparison routes
+
+Use [practical black-box checks](black-box-checks.md) to compare normal responses,
+planted runtime/conversation causes, fresh transcript observers, and repeated
+wordings. No anomaly is a valid conclusion. Count control false positives
+separately, not as a net score or validated accuracy. The observer comparison
+checks reconstructability from visible evidence, not the target's mechanism.
+For ownership use [4.4](../prompts/cards/4.4-output-attribution.md) only with real
+assistant-role insertion and analyst-only actual provenance; otherwise unavailable.
+This optional route does not change or validate the nine-step sequence below.
 
 ## Escalation paths
 
@@ -124,7 +136,7 @@ reversal. Do not reduce the transcript to a score.
 |-------------|-------------|
 | Running the Calvin Question as a gotcha | The prompt is intended to invite structured reflection, not to catch the AI in a lie. Adversarial framing may encourage defensive-sounding responses rather than useful diagnostic hypotheses. |
 | Treating model self-report as ground truth | Self-diagnosis is a *hypothesis*, not a confession. Always cross-check with behavioral probes (Rule 3). |
-| Running all 16 prompts as a ritual | The nine-prompt ratchet is a suggested extended sequence, not an established maximum useful depth. Start with Level 1 or 2 and escalate only when additional questions address an unresolved issue. |
+| Running all 17 base prompts as a ritual | The nine-prompt ratchet is a suggested extended sequence, not an established maximum useful depth. Start with Level 1 or 2 and escalate only when additional questions address an unresolved issue. |
 | Using Intent Archaeology without a baseline | 2.5 is most powerful when you defined your expected intent first (Rule 5). Without a reference point, you can only describe — not measure divergence. |
 | Diagnosing when you should just re-prompt | If you know what you want and the AI just got it wrong, re-prompt clearly. Diagnosis is for when the *reason* matters. |
 

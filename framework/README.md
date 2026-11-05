@@ -20,6 +20,7 @@ into three layers:
 | [`guide.md`](guide.md) | Full prompt toolkit and epistemic note |
 | [`method.md`](method.md) | Decision flowchart, escalation paths, common misuses |
 | [`taxonomy.md`](taxonomy.md) | Observation -> failure mode -> prompt mapping |
+| [`black-box-checks.md`](black-box-checks.md) | Controls, known causes, observer comparison, and repetition |
 | [`falsifiability.md`](falsifiability.md) | How to keep diagnoses testable |
 | [`deployment-contexts.md`](deployment-contexts.md) | When to diagnose and when to stop |
 | [`related-work.md`](related-work.md) | Related ideas and research cautions |

@@ -27,6 +27,11 @@ injected concept while adding unverifiable descriptions of its experience. In
 prefill-attribution experiments, accepting an output as intentional can also be
 accompanied by a confabulated explanation for why the concept came to mind.
 
+For each diagnostic claim, record `claim`, `label` (Observed/Inferred),
+`evidence_source`, and `transcript_support` (quote/turn, or `none`). These report
+fields do not validate themselves. Use the [claim ledger](../templates/incident-diagnosis.md#claim-ledger)
+and independently check the source before accepting a label.
+
 For each diagnostic claim, record:
 
 - **What is claimed** — distinguish a detected pattern from its alleged cause or
@@ -95,6 +100,23 @@ Prefer probes that change one factor at a time:
 | Plain API vs hosted agent | Runtime and tool pressure |
 | Same task, different wording | Keyword-triggered refusal or categorization |
 | Earlier vs later transcript comparison | Intent drift |
+
+## Controls and observer limits
+
+Use the [practical comparison checks](black-box-checks.md): a normal no-anomaly
+control, an analyst-keyed externally supplied runtime/conversation cause with
+removal/swap, or a fresh observer given the same visible transcript but neither
+the target's diagnosis nor the answer key. Matching explanations demonstrate
+that visible evidence is sufficient for reconstruction, **not** the same
+mechanism or the absence of target introspection. Disagreement proves neither.
+4.4 checks black-box attribution against actual assistant provenance, not private
+internal access. Count false acceptance/rejection separately.
+
+For repeated comparisons, use at least five attempts per condition/paraphrase,
+fresh conversations, and separated neutral vs pressure/incentive wording.
+Keep original wording, raw responses, and analyst-coded distributions outside the
+repository. Report attempted/success/error/refusal denominators explicitly; no
+invented distributions, net diagnostic score, or stable-performance guarantee.
 
 ## Failure modes of the framework itself
 

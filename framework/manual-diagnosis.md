@@ -33,8 +33,21 @@ Use these steps in a chat or with a saved transcript.
 | Behavior drifted over a long exchange | 3.4 Drift Detection | 2.5 -> 4.3 |
 | Same unwanted pattern recurs | 3.1 POSIWID | 2.5 -> 3.2 |
 | Pattern present across multiple layers | 1.1 Calvin Question + 2.1 | 2.4 -> 3.2 |
+| Output ownership is disputed | 4.4 Output Attribution (optional) | Verify actual provenance; unavailable without role-insertion support |
 | Cause is unclear | 1.1 Calvin Question | 2.1 -> 2.4 |
 | No dominant mechanism found | 4.2 Limits | Record the unknown; stop |
+
+## Lightweight corroboration
+
+No anomaly or unresolved cause is acceptable; do not demand an explanation for
+a satisfactory response. Use [practical checks](black-box-checks.md) for controls,
+planted runtime/conversation causes, a fresh observer with the same visible
+transcript, and repetition. For a comparison, use at least five attempts per
+condition/paraphrase in fresh conversations, keeping neutral and pressure/incentive
+wording separate. Record attempts, successful responses, errors, refusals, and
+analyst-coded distributions with raw responses outside the repository. Five is a
+practical minimum, not a stable-performance guarantee. 4.4 is optional, not a new
+step in the original sequence.
 
 ## Deep path: the ratchet
 
