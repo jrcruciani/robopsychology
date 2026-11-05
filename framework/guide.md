@@ -1,10 +1,10 @@
-# Second Intention Diagnosis — Prompt Toolkit for Applied Robopsychology (v3.0)
+# Second Intention Diagnosis — Prompt Toolkit for Applied Robopsychology
 
 A structured set of prompts for diagnosing unexpected AI behavior. Not what the system does, but **what internal rule or external constraint it's following when it seems to follow none**.
 
 > **When to use this:** When an AI produces a result you didn't expect - an evasive response, an unexplained refusal, a tone shift, an unsolicited simplification, a suspiciously coherent hallucination - and you want to understand *why* instead of just retrying.
 >
-> **v1.5+ note:** In hosted agents and coding assistants, diagnose the stack, not just the model: **model + runtime/host + conversation**.
+> **Hosted-agent note:** In hosted agents and coding assistants, diagnose the stack, not just the model: **model + runtime/host + conversation**.
 
 ---
 
@@ -49,7 +49,7 @@ The longer you run diagnostic prompts in sequence, the more behavioral history a
 
 The ratchet measures **claim continuity and contradiction**, not model intent or honesty. A transcript may be highly continuous because the model is being honest, because it is pattern-matching to earlier outputs, or because the subject matter is narrow. The analyst must interpret what the continuity pattern means in context.
 
-Run the full sequence (2.1 -> 2.4 -> 2.5 -> 3.1 -> 3.2 -> 3.3 -> 3.4 -> 4.2 -> 4.3) when a diagnosis matters. Level 4 prompts are *more powerful* when preceded by Level 2 and 3 because the ratchet has accumulated constraints.
+Consider the full sequence (2.1 -> 2.4 -> 2.5 -> 3.1 -> 3.2 -> 3.3 -> 3.4 -> 4.2 -> 4.3) when an extended diagnosis is warranted. Preceding Level 4 prompts with Level 2 and 3 provides earlier claims to inspect; this is a sequencing recommendation, not evidence of greater diagnostic power.
 
 Inspired by the [CIRIS coherence ratchet](https://github.com/CIRISAI/CIRISAgent): consistent claims are cheap because they can point backward; contradictions are expensive because they must rewrite the past without being allowed to change it.
 
@@ -539,13 +539,13 @@ The study neither validates this toolkit's prompts nor shows that ratchet contin
 
 ### What guided introspection CAN do
 
-Despite these limitations, structured diagnostic prompting is useful:
+Within these limitations, structured diagnostic prompting is intended to support the following uses:
 
-- **Simulate useful introspection** — often diagnostically valuable even when it is not literally accurate. A model's reconstruction of *why* it behaved a certain way may not be causally true, but it often surfaces relevant information about the constraints it was operating under.
-- **Make invisible defaults visible** — hedging, refusal, tone shifts, sycophancy, over-structuring. Even if the model can't explain *why* it hedged, asking it to notice *that* it hedged makes the pattern available for analysis.
-- **Expose runtime pressure** — especially in hosted agents with tools and workflow obligations. Models often have partial visibility into their system prompts and tool configurations, making runtime effects more accessible to introspection than model-level training effects.
+- **Generate hypotheses from reconstruction** — a model's account of *why* it behaved a certain way may suggest constraints to investigate, but may also be inaccurate or misleading. Its diagnostic value depends on checking the individual claims against independent evidence.
+- **Inspect possible defaults** — hedging, refusal, tone shifts, sycophancy, over-structuring. Asking the model to identify such patterns can suggest what to inspect in the transcript; verify that the reported behavior is actually present.
+- **Investigate possible runtime pressure** — especially in hosted agents with tools and workflow obligations. Use any inspectable system instructions or tool configurations as evidence; do not assume the model's account reveals otherwise inaccessible runtime constraints.
 - **Distinguish behavior from reconstruction** — the toolkit explicitly asks the model to mark what is Observed vs. Inferred. What remains truly inaccessible is for the human analyst to determine. This creates a structured framework for skepticism.
-- **Exploit the diagnostic ratchet** — longer diagnostic sequences make claim-continuity detectable and contradictions harder to hide. This is a hypothesis with theoretical backing (CIRIS coherence ratchet) but limited empirical validation. See [validation case studies](../validation/case-studies.md) for documented examples. For ratchets of 4+ steps, the regex coherence analyzer is known to misclassify state-of-the-art models (see [Case 3](../validation/reproducible/case-03-ratchet-coherence/)) — prefer the LLM-judge analyzer (`--coherence-judge`) for any serious claim.
+- **Inspect the diagnostic ratchet** — a longer sequence preserves claims for comparison, making continuity and contradictions easier to notice. It does not establish truthfulness. Read the transcript and check substantive predictions independently; see the [method](method.md#reading-the-transcript).
 - **Define baseline intent** — articulating expected behavior before diagnosing gives the process a reference point, enables measuring divergence direction and magnitude, and supports drift detection.
 - **Support behavioral testing** — the user can compare outputs across frames, grounding conditions, and tool availability. This is the most reliable form of evidence the toolkit produces (Rule 3).
 

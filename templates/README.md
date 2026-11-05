@@ -1,8 +1,7 @@
 # Robopsychology Templates
 
 These worksheets support manual use of the framework. They are intentionally
-plain Markdown so they can be pasted into an incident doc, model evaluation
-record, issue, or notebook.
+plain Markdown so they can be pasted into an incident note, shared document, or notebook.
 
 | Template | Use |
 |----------|-----|

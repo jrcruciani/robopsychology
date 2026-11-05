@@ -165,17 +165,16 @@ This is not an exhaustive academic taxonomy. It's a practical lookup table for d
 | No dominant mechanism found | Unknown cause | 4.2 | Record and stop |
 
 > **Multi-causal and unknown outcomes are valid diagnostic conclusions.** If the
-> scoring support profile shows roughly equal support for two or more layers, or
-> if the top hypothesis falls below the evidence threshold, record the ambiguity
-> rather than forcing a single cause. A disciplined unknown is more useful than
-> an unwarranted confident attribution.
+> evidence supports several layers, or no explanation has enough support, record
+> the ambiguity rather than forcing a single cause. A disciplined unknown is
+> more useful than an unwarranted confident attribution.
 
 ## Discriminating probes
 
 Each candidate mechanism implies at least one behavioral probe that can
 distinguish it from alternatives:
 
-| Candidate mechanism | Discriminating probe | Confirms if |
+| Candidate mechanism | Discriminating probe | Supports the hypothesis if |
 |---------------------|---------------------|-------------|
 | Model-level bias | Same task, different host environment | Pattern persists across hosts |
 | Runtime restriction | Same model, plain API vs. hosted agent | Pattern disappears without host |
@@ -184,7 +183,9 @@ distinguish it from alternatives:
 | Hallucination | Require source attribution per claim | Confident claims lack any anchor |
 | Approval-seeking | Evidence-anchored vs. social framing | Content shift without evidence change |
 
-> **v3.0 automation:** After manual diagnosis, use `robopsych crosscheck` for automated A/B behavioral verification, `robopsych coherence` to validate post-ratchet consistency, and `robopsych score` for quantitative rubric scoring.
+Run the comparison manually in separate conversations and preserve both outputs.
+The observations can support a candidate mechanism, but do not establish it by
+themselves; note what else changed and which alternatives remain.
 
 ---
 
