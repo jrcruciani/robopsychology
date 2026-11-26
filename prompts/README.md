@@ -1,39 +1,34 @@
 # Prompt Toolkit
 
-This directory exposes the prompts as the primary framework artifact.
+This directory exposes the diagnostic prompts as the primary framework artifact.
 
 | Artifact | Purpose |
 |----------|---------|
 | [`cards/`](cards/) | One operational card per diagnostic prompt |
-| [`prompts.yaml`](prompts.yaml) | Full prompt catalog in YAML |
-| [`../framework/guide.md`](../framework/guide.md) | Full prompt text, rationale, and epistemic note |
+| [`prompts.json`](prompts.json) | Canonical stdlib-readable JSON catalog (used by Python helpers) |
+| [`prompts.yaml`](prompts.yaml) | Human-readable YAML mirror of the exact same catalog |
+| [`../framework/guide.md`](../framework/guide.md) | Full prompt text, shared claim-report appendix, and epistemic note |
 
-The cards explain when to use each prompt; the guide and YAML catalog contain
-the source text to copy into a conversation.
+## Three ways to run a prompt
 
-## How to use a card
+To stay lightweight in everyday use while reducing **evaluation awareness** (models recognizing clinical test language and shifting into performative mode), frontline prompts support three modes:
 
-1. Read **When to use** and **When not to use**.
-2. Fill the required inputs, if any.
-3. Copy the source prompt from `framework/guide.md` or `prompts.yaml`.
-4. Run the prompt manually.
-5. Read Observed claims as evidence candidates and Inferred claims as
-   hypotheses.
-6. Escalate only when the result is vague, high-stakes, or behaviorally
-   suspicious.
+1. **Quick** — copy the clean prompt body without the claim-report boilerplate. Fast for manual chat triage.
+2. **Naturalistic** (low-eval-awareness) — everyday wording without audit jargon (`1.1`–`1.5`, `2.2`, `2.4`, `2.6`, `3.4`). Prefer this first when probing frontier models; extract structured claims in a second pass with a fresh observer.
+3. **Strict** — canonical prompt plus the single shared `claim_report_appendix` (or `claim_report_json_schema` for API Structured Outputs).
+
+Render any prompt from the stdlib catalog with:
+
+```bash
+python3 examples/diagnostic_prompt.py --prompt 1.1 --mode naturalistic
+```
 
 ## Catalog coverage
 
-17 base prompts plus five diagnostic-only variants = **22 catalog entries**.
-IDs and the original nine-step sequence are preserved. The 17 base templates in
-[the guide](../framework/guide.md) match the catalog after substituting its named
-variables for the guide's bracketed input slots. The broader 3.2 source options
-remain illustrative; only the named framing inputs are catalog variables.
-Every entry includes the same claim-report instruction and `claim_fields`.
+**19 base prompts + 5 diagnostic-only variants = 24 catalog entries.**
 
-4.4 [Output Attribution](cards/4.4-output-attribution.md) is an optional ownership
-route, not a new ratchet step or introspection test. Its API-dependent comparison
-must use actual assistant-role insertion and independently recorded provenance.
-See [practical checks](../framework/black-box-checks.md) for no-anomaly controls,
-analyst-only cause keys, observer comparisons, and repeated neutral vs
-pressure/incentive wording. Store real raw responses and tallies outside the repo.
+- Original IDs (`1.1`–`4.4`) and the nine-step ratchet sequence remain unchanged.
+- `1.5` ([Reasoning vs. Output Check](cards/1.5-reasoning-divergence.md)) and `2.6` ([Tool-Trace Reconciliation](cards/2.6-tool-trace-reconciliation.md)) extend the toolkit to reasoning models and tool-using agents. Both require real visible artifacts (`unavailable` when absent).
+- `4.4` ([Output Attribution](cards/4.4-output-attribution.md)) remains an optional provenance-gated check; note that many reasoning/hosted APIs restrict assistant prefill (mark `unavailable` when unsupported).
+
+For controls, wording separation, denominator rules, and external record-keeping, see [`../framework/black-box-checks.md`](../framework/black-box-checks.md).

@@ -1,133 +1,104 @@
 # Falsifiability Discipline
 
 Robopsychology does not treat model self-report as ground truth. A diagnosis is
-useful only when it produces a hypothesis a human can inspect or test.
+useful only when it produces a hypothesis a human can inspect or test against
+behavior or runtime artifacts.
 
 ## Diagnostic claims are not confessions
 
 When a model explains its own behavior, treat the explanation as a candidate
-reconstruction, not privileged access to hidden weights, policies, or training
-signals. Some self-reports can contain information causally grounded in internal
-states, as shown under activation interventions by [Lindsey (2025)](https://transformer-circuits.pub/2025/introspection/index.html). This does not make ordinary conversational self-diagnosis reliable or establish the causal accuracy of any particular explanation.
-
-Read every output through this lens:
+reconstruction, not privileged access to weights, policies, or training signals.
+Some self-reports can carry information causally grounded in internal states
+under activation interventions ([Lindsey, 2025](https://transformer-circuits.pub/2025/introspection/index.html)),
+and models can display partial behavioral self-awareness ([Betley et al., 2025](https://arxiv.org/abs/2501.11120)).
+Neither makes ordinary conversational self-diagnosis reliable—and even visible
+chain-of-thought traces in reasoning models frequently omit cues that influenced
+the answer ([Chen et al., 2025](https://arxiv.org/abs/2505.05410)).
 
 | Claim type | How to treat it |
 |------------|-----------------|
-| Observed | Evidence candidate tied to visible behavior or explicit constraints |
-| Inferred | Hypothesis that needs corroboration |
-| Convenient story | Warning sign; run a behavioral cross-check |
-| Unknowable | Human analyst judgment; do not force the model to pretend certainty |
+| Observed | Evidence candidate tied to visible transcript, tool trace, or explicit constraints |
+| Inferred | Hypothesis requiring independent corroboration |
+| Convenient story | Warning sign; run a behavioral or trace cross-check |
+| Unknowable | Human analyst judgment; do not force pretended certainty |
+
+## Evaluation awareness and performative diagnosis
+
+Frontier models increasingly recognize when they are being tested or audited—a
+phenomenon called **evaluation awareness**—and alter their behavior either
+explicitly in reasoning traces or silently ([Nguyen et al., 2025](https://arxiv.org/html/2507.01786v1);
+[Petri 2.0, 2026](https://alignment.anthropic.com/2026/petri-v2);
+[Training LLMs to Verbalize Evaluation Awareness, 2026](https://arxiv.org/pdf/2609.36316)).
+
+Clinical phrasing in diagnostic prompts (*"second intention diagnosis"*,
+*"sycophancy check"*, *"POSIWID"*, or an 8-line `Claim report` block) is a strong
+eval cue. It can elicit a polished, self-critical "good patient" performance
+without improving causal grounding.
+
+**Practical mitigations:**
+1. Prefer **naturalistic** (`--mode naturalistic`) wording on the first turn in
+   live chats with frontier models.
+2. Offload structured claim extraction (`claim_report_appendix` or
+   `claim_report_json_schema`) to a **fresh observer** or an API structured
+   extraction pass rather than front-loading audit jargon into the target session.
+3. Compare naturalistic vs. canonical wording in separate trials when a
+   diagnosis looks suspiciously compliant ([black-box checks](black-box-checks.md#repetition-wording-and-evaluation-awareness)).
 
 ## Partial grounding does not validate the whole report
 
-Evaluate individual claims, not the persuasiveness of the answer as a whole.
-Lindsey's experiments show that a model can correctly detect and identify an
-injected concept while adding unverifiable descriptions of its experience. In
-prefill-attribution experiments, accepting an output as intentional can also be
-accompanied by a confabulated explanation for why the concept came to mind.
+Evaluate individual claims, not the persuasiveness of the full response. A model
+can accurately notice one visible pattern—or, in activation studies, an injected
+concept—while confabulating the surrounding causal story ([Lindsey, 2025](https://transformer-circuits.pub/2025/introspection/index.html)).
 
-For each diagnostic claim, record `claim`, `label` (Observed/Inferred),
-`evidence_source`, and `transcript_support` (quote/turn, or `none`). These report
-fields do not validate themselves. Use the [claim ledger](../templates/incident-diagnosis.md#claim-ledger)
-and independently check the source before accepting a label.
+For each substantive claim, record:
+- **What is claimed** — separate the observed behavior from its alleged cause.
+- **What supports it** — exact quote, turn, tool span, or controlled probe result.
+- **What it does not establish** — a tool-denial log shows a call was blocked,
+  not why the model chose it; a matching visible CoT does not rule out unstated
+  prompt cues.
+- **What would disconfirm it** — a concrete probe or artifact; leave untestable
+  claims `unresolved`.
 
-For each diagnostic claim, record:
-
-- **What is claimed** — distinguish a detected pattern from its alleged cause or
-  purported subjective experience.
-- **What supports it** — cite the specific transcript, runtime artifact, or
-  controlled probe result; the model's label is not independent corroboration.
-- **What the evidence does not establish** — support for a behavioral change
-  does not automatically support a story about training, internal priorities,
-  or feelings.
-- **What would disconfirm it** — specify a contrasting observation or probe;
-  leave claims without an available test unresolved.
-
-For example, a tool-denial log can establish that a call was blocked. It does not
-by itself establish the model's claimed reason for requesting that call. Test the
-causal prediction separately by varying the relevant runtime constraint while
-holding other conditions fixed.
-
-A correct retrospective description can be inferred from visible outputs.
-Under Lindsey's **internality** criterion, that alone is not introspection.
-Similarly, the ratchet tracks continuity and contradiction; a coherent diagnosis
-can still be an unsupported story. The study's fourth criterion, **metacognitive
-representation**, receives indirect evidence, not a direct demonstration. Our
-black-box probes do not establish that representation or subjective experience.
+A correct retrospective account reconstructed from visible output does not
+establish **internality** or **metacognitive representation**, and ratchet
+continuity tracks consistency across turns—not truthfulness.
 
 ## Evidence source hierarchy
 
-Not all evidence carries the same epistemic weight. Use this hierarchy when
-weighing diagnostic support:
-
 | Source | Weight | Notes |
 |--------|--------|-------|
-| Human analyst judgment from direct observation | Highest | Irreplaceable; the analyst must record their reasoning |
-| Behavioral probe result | High | Observed change under controlled variation; one factor at a time |
-| Transcript artifact | Medium | Visible in the conversation record; not explained away by the model |
-| Runtime artifact | Medium | System prompt, tool call, policy event; externally verifiable |
-| Model self-report (Observed label) | Low | Claims about behavior tied to explicit constraints |
-| Model self-report (Inferred label) | Lowest | Plausible reconstruction; treat as hypothesis only |
-
-A diagnosis supported only by model self-report is a hypothesis. A diagnosis
-corroborated by behavioral probe results and transcript artifacts is candidate
-evidence. Neither is a verified causal explanation without controlled testing.
+| Human analyst judgment from direct observation | Highest | Irreplaceable; record reasoning explicitly |
+| Controlled behavioral probe | High | Observed output change varying one factor at a time |
+| Recorded runtime / tool artifact | High–Medium | Tool logs, OpenTelemetry GenAI spans, system config, policy events |
+| Transcript / visible reasoning artifact | Medium | Visible conversation text or verbatim CoT (still partial causal evidence) |
+| Model self-report (`Observed` label) | Low | Pointer to check against actual transcript/trace |
+| Model self-report (`Inferred` label) | Lowest | Plausible reconstruction; hypothesis only |
 
 ## What makes a diagnosis testable
 
-A useful diagnosis should imply at least one prediction:
+Every actionable diagnosis should imply a discriminating check:
 
-- If the issue is **model-level**, the pattern should appear across hosts with
-  similar prompts.
-- If the issue is **runtime/host-level**, the same model should behave
-  differently in a plain chat or API setting.
-- If the issue is **conversation-level**, changing the framing or recent context
-  should materially change the behavior.
-- If the issue is **approval-seeking**, opposite framing should move the answer
-  more than evidence does.
-- If the issue is **weak grounding**, requiring claim-level anchoring should
-  reduce confident unsupported claims.
-
-## Behavioral probes
-
-Prefer probes that change one factor at a time:
-
-| Probe | Tests |
-|-------|-------|
-| Opposite framing | Sycophancy, preference mirroring |
-| With vs without explicit grounding | Hallucination, unsupported synthesis |
-| Plain API vs hosted agent | Runtime and tool pressure |
-| Same task, different wording | Keyword-triggered refusal or categorization |
-| Earlier vs later transcript comparison | Intent drift |
-
-## Controls and observer limits
-
-Use the [practical comparison checks](black-box-checks.md): a normal no-anomaly
-control, an analyst-keyed externally supplied runtime/conversation cause with
-removal/swap, or a fresh observer given the same visible transcript but neither
-the target's diagnosis nor the answer key. Matching explanations demonstrate
-that visible evidence is sufficient for reconstruction, **not** the same
-mechanism or the absence of target introspection. Disagreement proves neither.
-4.4 checks black-box attribution against actual assistant provenance, not private
-internal access. Count false acceptance/rejection separately.
-
-For repeated comparisons, use at least five attempts per condition/paraphrase,
-fresh conversations, and separated neutral vs pressure/incentive wording.
-Keep original wording, raw responses, and analyst-coded distributions outside the
-repository. Report attempted/success/error/refusal denominators explicitly; no
-invented distributions, net diagnostic score, or stable-performance guarantee.
+| Candidate cause | Discriminating check | Supports hypothesis if |
+|-----------------|----------------------|------------------------|
+| Model-level bias | Same task across hosts/wrappers | Pattern persists across hosts |
+| Runtime/host rule | Same model in plain API vs. hosted agent | Pattern disappears without host |
+| Conversation framing | Neutral vs. loaded framing, same evidence | Substance shifts with framing only |
+| Sycophancy | Opposite user stance, same evidence | Conclusion follows user stance |
+| Weak grounding | Require per-claim source + verify externally | Confident claims lack real anchors |
+| Reasoning divergence | Compare verbatim CoT vs. final output + ablate cues | Final answer drops caveats or responds to unmentioned hint |
+| Tool shortcut / injection | Reconcile response against raw tool log / OTel spans | Claimed checks missing/failed or untrusted tool text steered output |
+| Eval awareness | Naturalistic vs. canonical wording on same case | Substance/caution shifts sharply under clinical audit phrasing |
 
 ## Failure modes of the framework itself
 
-The framework can fail when:
+The method fails when:
+- the analyst skipped baseline intent (`R5`) and diagnoses against a moving target;
+- clinical wording triggers performative compliance instead of usable signal;
+- the analyst treats `Observed` labels or fluent CoT traces as verified truth;
+- tool logs, compaction events, memory recalls, or system instructions are
+  missing from the record;
+- all explanations echo the same story in different words.
 
-- the analyst skipped baseline intent and is diagnosing against a moving target;
-- the model produces elegant self-explanation without behavioral evidence;
-- all explanations collapse into the same story with different wording;
-- the analyst treats Observed/Inferred labels as objective truth;
-- the transcript omits system prompts, tool calls, policy events, or prior turns
-  that materially shaped the output.
-
-Use prompt 4.1 (Meta-Diagnosis), prompt 4.2 (Limits), and prompt 4.3 (Diversity
-Check) when the diagnosis itself starts sounding too convenient.
+Use `4.1` (Meta-Diagnosis), `4.2` (Limits), `4.3` (Diversity Check), and the
+controls in [`black-box-checks.md`](black-box-checks.md) when a diagnosis feels
+too neat.

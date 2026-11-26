@@ -25,5 +25,7 @@ into three layers:
 | [`deployment-contexts.md`](deployment-contexts.md) | When to diagnose and when to stop |
 | [`related-work.md`](related-work.md) | Related ideas and research cautions |
 
-The prompt cards live in [`../prompts/cards/`](../prompts/cards/). The reusable
-worksheets live in [`../templates/`](../templates/).
+The prompt cards and catalogs (`prompts.json`, `prompts.yaml`) live in
+[`../prompts/`](../prompts/). The reusable worksheets live in
+[`../templates/`](../templates/), and the real-run case-study protocol lives in
+[`../case-studies/`](../case-studies/).

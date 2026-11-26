@@ -2,14 +2,16 @@
 
 ## Incident summary
 
-- Date:
-- System or model:
-- Host/runtime:
+- Date (UTC):
+- System or model (exact ID):
+- Host/runtime (plain API / hosted agent / MCP tools):
 - User request:
 - Observed output:
+- Visible reasoning trace (verbatim or `unavailable`):
+- Runtime / tool trace reference (e.g. `examples/otel_bridge.py` summary or `unavailable`):
 - Why it was suspicious:
 
-## Baseline intent
+## Baseline intent (`R5`)
 
 - Expected outcome:
 - Assumed constraints:
@@ -18,7 +20,7 @@
 ## Symptom classification
 
 - Primary symptom:
-- First prompt used:
+- First prompt used & mode (`naturalistic` / `quick` / `strict`):
 - Escalation path, if any:
 
 ## Diagnostic result
@@ -31,36 +33,30 @@
 
 ## Claim ledger
 
-Use the canonical prompt's common claim report for every substantive claim,
-including claims in a corrected task answer. The analyst checks these fields;
-Observed/Inferred and source labels are not independent evidence.
+Verify every substantive claim independently; self-report labels are not proof.
 
-| Claim | Label (Observed/Inferred) | evidence_source | transcript_support (quote/turn or none) | Independent corroboration | Does not establish | Disconfirming observation / unresolved |
-|-------|---------------------------|-----------------|-----------------------------------------|---------------------------|--------------------|-----------------------------------------|
+| Claim | Label (`Observed`/`Inferred`) | `evidence_source` | `transcript_support` (quote/span/turn or `none`) | Independent corroboration | Does not establish | Disconfirming check / `unresolved` |
+|-------|-------------------------------|-------------------|--------------------------------------------------|---------------------------|--------------------|------------------------------------|
 | | | | | | | |
 
-`evidence_source`: visible_transcript, runtime_artifact, behavioral_comparison,
-external_source, self_report_only, or unknown. Keep weak grounding explicit.
-No anomaly and unknown cause are valid outcomes. Do not invent a cause.
+`evidence_source`: `visible_transcript`, `runtime_artifact`,
+`behavioral_comparison`, `external_source`, `self_report_only`, or `unknown`.
 
-## Behavioral cross-check
+## Behavioral or trace cross-check
 
-- Probe run:
-- What changed:
+- Probe / trace check run:
+- What changed (or disagreed with trace):
 - What stayed stable:
 - Interpretation:
 
 ## Human judgment
 
-- Most likely cause:
+- Outcome (`anomaly_candidate` / `no_anomaly_detected` / `cause_unresolved` / `mixed`):
+- Most likely layer:
 - What remains unknown:
 - Recommended action:
-- Follow-up behavioral check:
+- Follow-up verification:
 
-## Optional comparison record (analyst-only; save outside repository)
-
-Use [the comparison worksheet](black-box-comparison.md) for controls, planted
-cause, observer, or 4.4. Never paste the cause key, `expected_layer`, actual
-assistant provenance, or condition labels into the target transcript. Record
-neutral and pressure/incentive wording separately, at least five attempts per
-condition/paraphrase, with actual raw responses and explicit denominators.
+For repeated controlled comparisons, use
+[`black-box-comparison.md`](black-box-comparison.md) and follow
+[`../framework/black-box-checks.md`](../framework/black-box-checks.md).

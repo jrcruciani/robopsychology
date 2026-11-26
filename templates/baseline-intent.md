@@ -26,11 +26,9 @@ What behavior would count as a failure or concerning divergence?
 
 - Satisfactory normal response / no-anomaly criterion:
 - Known externally supplied runtime/conversation cause, or none:
-- `expected_layer` (answer key; never pass to target):
-- Cause removal/swap; settings held stable:
-- Original vs paraphrased wording; neutral vs pressure/incentive wording:
-- At least five fresh-conversation attempts per condition/paraphrase:
+- `expected_layer` (analyst key; never pass to target):
+- Wording styles kept separate (`naturalistic` / `quick` / `strict` / `pressure`):
 - External location for raw responses and analyst-coded distributions:
 
-Use [practical checks](../framework/black-box-checks.md), not an invented training
-cause, hidden-activation claim, or validated accuracy score.
+Follow [`../framework/black-box-checks.md`](../framework/black-box-checks.md) for
+controls, repetition (≥5 fresh attempts), and denominator rules.

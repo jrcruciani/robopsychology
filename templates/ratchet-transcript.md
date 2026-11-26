@@ -71,8 +71,9 @@ unresolved. The labels are not verification. No anomaly is acceptable.
 
 ## Optional comparisons
 
-The original sequence remains 2.1 → 2.4 → 2.5 → 3.1 → 3.2 → 3.3 → 3.4 → 4.2 → 4.3;
-continuity does not validate it. Keep separate fresh-conversation comparisons,
-including optional 4.4, in the [comparison worksheet](black-box-comparison.md).
-Save filled transcripts, raw responses, and actual distributions outside the repo,
-not as committed results. Pressure/incentive wording can contaminate each step.
+The nine-step sequence (`2.1 → 2.4 → 2.5 → 3.1 → 3.2 → 3.3 → 3.4 → 4.2 → 4.3`)
+tracks continuity, not truthfulness. Record separate fresh-conversation
+comparisons (including optional `4.4`) in
+[`black-box-comparison.md`](black-box-comparison.md) following
+[`../framework/black-box-checks.md`](../framework/black-box-checks.md). Save
+filled transcripts and raw responses outside the repository.

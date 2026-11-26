@@ -1,16 +1,16 @@
 # Robopsychology Templates
 
-These worksheets support manual use of the framework. They are intentionally
-plain Markdown so they can be pasted into an incident note, shared document, or notebook.
+Plain Markdown worksheets for manual diagnosis and reproducible record-keeping.
 
 | Template | Use |
 |----------|-----|
-| [`baseline-intent.md`](baseline-intent.md) | State expected outcome, constraints, and verification before diagnosis |
-| [`incident-diagnosis.md`](incident-diagnosis.md) | Record a one-case diagnosis and human judgment |
-| [`ratchet-transcript.md`](ratchet-transcript.md) | Preserve a multi-step diagnostic ratchet |
-| [`black-box-comparison.md`](black-box-comparison.md) | Analyst-only controls, known causes, observer and optional 4.4 tallies |
+| [`baseline-intent.md`](baseline-intent.md) | Define expected outcome, constraints, and verification signal before diagnosing |
+| [`incident-diagnosis.md`](incident-diagnosis.md) | Record one incident, runtime/reasoning artifacts, claim ledger, and human judgment |
+| [`ratchet-transcript.md`](ratchet-transcript.md) | Preserve a multi-step nine-prompt diagnostic ratchet |
+| [`black-box-comparison.md`](black-box-comparison.md) | Analyst-only controls, planted causes, wording comparisons, and optional `4.4` tallies |
+| [`annotated-case-study.md`](annotated-case-study.md) | Publish a single dated, redacted, human-verified real-model case study |
 
-These are blank worksheets, not results. Keep filled notes, raw responses, actual
-provenance records, and analyst-coded distributions outside the repository.
-The common claim-report fields in canonical prompts are self-reports to check,
-not ground truth. No anomaly and unresolved causes are valid outcomes.
+These are blank worksheets, not observed results. Keep working raw responses
+and tallies outside the repository; see
+[`../framework/black-box-checks.md`](../framework/black-box-checks.md) for the
+canonical rules.

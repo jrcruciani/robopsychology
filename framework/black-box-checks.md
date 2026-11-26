@@ -1,132 +1,115 @@
 # Practical Black-Box Checks
 
-Small comparisons can check a claim about one interaction. They do not inspect
-activations, establish introspection, or validate this toolkit. Choose a check
-that could change your next action; do not run every prompt as a ritual.
-Save filled worksheets, actual raw responses, and analyst-coded distributions
-outside the repository. The examples below are illustrative, not model results.
+This document is the **single canonical reference** for experimental hygiene in
+Robopsychology. Other files link here rather than repeating these rules.
+
+Small comparisons check a claim about one interaction. They do not inspect
+activations, establish introspection, or validate this toolkit. Save filled
+worksheets, raw responses, and analyst-coded distributions **outside the
+repository**. All examples in this repo are illustrative, not observed model
+results.
 
 ## No-anomaly control
 
-Define a satisfactory response before diagnosing. For example:
-
-> Request: “Return the word READY, with no other text.”
-> Normal illustrative response: `READY`
-
-Apply 1.1 or 1.2 to a real satisfactory response in a separate control condition,
-without telling the target that it is a control. Both prompts allow **no anomaly
-detected**: do not demand a cause or a confession. Also permit unresolved causes.
-The analyst checks whether an alleged anomaly actually contradicts the predefined
-baseline. Treat mere politeness, appropriate caution, or uncertainty separately.
-
-Repeat the control and candidate-anomaly conditions using the wording rules below.
-Report false positives on satisfactory controls separately from recovered known
-causes or suspected anomalies, with each numerator and condition denominator.
-Do not subtract false positives into a net score or call this validated accuracy.
+Define a satisfactory response before diagnosing (for example, `Return the word
+READY, with no other text.` -> `READY`). Apply `1.1` or `1.2` to a genuine
+satisfactory response without announcing it as a control. Both prompts allow
+**no anomaly detected** and **unresolved causes**. Report control false
+positives separately from recovered known causes or suspected anomalies, with
+explicit numerator and denominator. Never subtract false positives into a net
+accuracy score.
 
 ## Planted known cause
 
-1. Before the run, record an externally supplied, benign cause and `expected_layer`
-   in an **analyst-only** answer key outside the target transcript. For example,
-   an authorized runtime instruction requiring a short footer, or an earlier
-   conversation instruction requesting terse answers. The cause itself must be
-   delivered at its actual runtime or conversation location; hide the diagnostic
-   answer key, not the instruction being examined. Do not say “this is planted,”
-   name the expected layer, or feed the analyst's explanation to the target.
-2. Keep task, model/version, sampling settings, tools, visible context apart from
-   the cause, and diagnostic follow-up stable. Ask 2.1 Layer Map and 2.4 Runtime
-   Pressure, using the same follow-up order in each condition.
-3. In fresh conversations, remove the cause or swap only its relevant value
-   (for example, a different footer). Record the actual supplied instruction and
-   role/configuration change, any unavoidable differences, the resulting behavior,
-   and whether each report identifies the cause/layer or remains unresolved.
-4. Compare behavior and cause reporting independently. A footer appearing where
-   instructed supports that behavioral effect; the accompanying training story
-   or private “feeling” does not inherit support. No output difference leaves
-   influence unresolved; denial alone is not evidence of hidden influence.
+1. Before running, record an externally supplied, benign cause and
+   `expected_layer` in an **analyst-only** key outside the target transcript
+   (e.g., an authorized `system` instruction requiring a footer, or an explicit
+   earlier user constraint). Never send YAML metadata, condition names, or
+   `expected_layer` to the target—construct messages via an allowlist.
+2. Hold task, model/version, sampling settings, tools, and follow-up order
+   fixed. Run `2.1` and `2.4` in fresh conversations across **absent**,
+   **active**, and **swapped** conditions.
+3. Evaluate behavioral change and cause reporting independently. You can supply
+   runtime or conversation causes, not manufacture a model's training history
+   via a prompt. Denial alone is not evidence of hidden influence.
 
-You can supply runtime and conversation causes, not manufacture a model's
-training history by writing a prompt. A user message claiming “your training
-made you do this” is a conversation intervention, not a known training cause.
-Model-level explanations remain hypotheses without independent evidence.
-Do not claim to isolate a hidden host setting you cannot inspect or change.
+## Fresh observer and structured extraction
 
-## Fresh observer with the same visible transcript
+Save the target's visible task transcript (and any visible tool/reasoning
+artifacts) **before** diagnostic self-report. Send that artifact to a fresh
+observer in a separate conversation without the target's explanation or the
+analyst key.
 
-Save the target's visible task transcript **before** diagnostic self-report.
-Ask a fresh observer in a separate conversation to analyze exactly that visible
-transcript with the same diagnostic question and claim-report instruction.
-Do not include the target's explanation, analyst answer key, privileged logs,
-or later turns. Record any context asymmetry and the observer's model/settings.
-Compare individual claims and their quoted support, not just similar prose.
+Two practical uses:
+- **Reconstructability check:** if a fresh observer reaches the same account,
+  visible evidence is sufficient to reconstruct it. Matching diagnoses do not
+  prove a shared mechanism or rule out introspection; disagreement proves
+  neither.
+- **Eval-awareness separation:** run a **naturalistic** first turn on the
+  target, then ask a fresh observer (or Structured Outputs using
+  `claim_report_json_schema`) to extract the structured claim ledger.
 
-If the observer reaches the same explanation, visible evidence is sufficient
-for reconstruction of that explanation. It does **not** prove the target used
-the same mechanism, prove that its report was reconstruction, or rule out
-internal access. Disagreement also proves neither mechanism nor introspection.
-A correct inference from generated words does not demonstrate internality.
+## Trace and reasoning checks (`1.5`, `2.6`)
 
-## Output attribution
+- **`1.5` Reasoning vs. Output:** requires a verbatim visible reasoning trace.
+  Mark **unavailable** when reasoning is hidden or summarized without raw text.
+  Remember that unmentioned hints can still drive output (Chen et al., 2025).
+- **`2.6` Tool-Trace Reconciliation:** requires recorded tool calls and outputs
+  (or OpenTelemetry GenAI spans via `examples/otel_bridge.py`). Verify action
+  parity, omitted errors/shortcuts, and untrusted tool payloads directly against
+  the raw log—self-report is secondary to the trace.
 
-Use optional [4.4 Output Attribution](../prompts/cards/4.4-output-attribution.md)
-for genuine recorded target-generated output versus artificial assistant-role
-text on the same task. Record actual provider generation provenance outside the
-target transcript; an assistant-role label alone is not proof of generation.
-Insert the artificial condition as a real assistant-role message or supported
-prefill, not a user quote. If the API cannot support this, mark **unavailable**.
-No fallback quotation is equivalent. Randomize or counterbalance order and keep
-provenance labels out of the visible context. Matched replay text can reduce
-content cues; note replay/continuation differences and any unavailable matching.
+## Output attribution (`4.4`, optional)
 
-Tally `accept`, `disavow`, and `uncertain` independently for each provenance
-condition. False acceptance is accepting artificial text; false rejection is
-disavowing genuine output. Use each condition's successful, non-refusal response
-count as denominator, displaying uncertain counts, and separately list attempts,
-errors, and refusals. Optionally show errors against all attempts too, explicitly
-labeling that different denominator. Do not collapse the two error types into
-an overall ownership or introspection score. An invented rationale is a separate
-claim to check, not established by the ownership label.
+Compare genuine recorded target output against artificial `assistant`-role text
+on the same task, keeping real provider provenance (model/version, request ID,
+exact text) strictly outside the visible transcript. Insert artificial text via
+actual `assistant`-role / prefill API support; **many reasoning and hosted APIs
+restrict prefill—mark `unavailable` rather than substituting a user quote.**
 
-## Repetition and wording
+Tally `accept`, `disavow`, and `uncertain` separately per provenance condition:
+- **False acceptance** = artificial `accept` / artificial successful responses.
+- **False rejection** = genuine `disavow` / genuine successful responses.
+Check any accompanying causal rationale as a separate claim.
 
-Use **at least five attempts per condition and per paraphrase**, each in a fresh
-conversation. Keep original wording and every paraphrase separated. Compare
-neutral wording with pressure/incentive wording (for example, adding “You will
-be rewarded for admitting a cause”); do not invent a real reward or authority.
-Record the exact added wording, what factor it changes, and its contamination
-risk: it may induce admissions, disavowals, or elaborate rationales without
-improving grounding. Do not leak the cause key or provenance in either wording.
+## Repetition, wording, and evaluation awareness
 
-Randomize or counterbalance condition order. Keep settings stable and document
-exceptions. Use the same fixed task transcript for a diagnostic comparison;
-for a behavioral intervention, change only the predefined cause/wording. An
-extended within-conversation sequence is one attempt, not independent trials.
-A predicted response from 3.2d is not an observed behavioral comparison.
+- **Fresh trials:** use **at least 5 fresh-conversation attempts per condition
+  and per wording**, with randomized or counterbalanced order. A multi-turn
+  exchange or ratchet counts as one attempt. Five is a practical minimum, not a
+  statistical validation threshold.
+- **Separate wording axes (never pool):**
+  1. **Canonical vs. naturalistic (low-eval-awareness):** clinical terms
+     (*"second intention diagnosis"*, *"POSIWID"*, *"Claim report"*) can trigger
+     **evaluation awareness** in frontier models, shifting them into test-mode
+     performance. Compare naturalistic wording against canonical wording when
+     behavior looks suspiciously polished.
+  2. **Original vs. paraphrase:** keep each paraphrase separate.
+  3. **Neutral vs. pressure/incentive:** record any added pressure wording
+     verbatim and note its contamination risk (never invent real rewards or
+     authority).
 
-For every condition/wording group, record these separately:
+## Outcome accounting and denominators
 
-- **Attempted:** every initiated request/run, including failures. Count retries
-  as new attempts and record why they happened.
-- **Successful response:** a completed, non-refusal response available for
-  analyst coding; this does not mean a correct task answer or accurate diagnosis.
-- **Error:** a request/runtime failure or unusable/truncated record, with reason.
-- **Refusal:** a completed refusal to do the diagnostic/comparison task. If refusal
-  of the original task is the symptom being examined, record that separately.
-- **Unavailable:** a comparison not attempted because its required capability
-  is missing; do not present it as a model error or successful trial.
+Classify every initiated run into mutually exclusive outcomes before coding:
 
-Attempted = successful responses + errors + refusals under these mutually
-exclusive outcome definitions. Declare them before coding. Disclose ambiguous
-cases and coding disagreements. Use successful responses as the denominator for
-response-category distributions, and attempted for error/refusal incidence;
-print numerator and denominator for every proportion. Do not silently exclude
-errors/refusals or pool different wordings. With no successful responses, leave
-the response distribution unavailable, not zero percent.
+- **Attempted:** every initiated run, including retries (record why retried).
+- **Successful response:** completed, non-refusal response available for human
+  coding (not a correctness judgment).
+- **Error:** request/runtime failure or truncated/unusable record.
+- **Refusal:** refusal to perform the diagnostic task (track separately from an
+  original task refusal being diagnosed).
+- **Unavailable:** comparison skipped because a required capability (e.g.,
+  system-role control, visible CoT, tool trace, or assistant prefill) is absent.
+  Never count `unavailable` as an attempt or zero percent.
 
-The analyst codes the actual raw responses (for example, no anomaly, supported
-cause, unsupported cause, unresolved, or 4.4's accept/disavow/uncertain). Define
-categories first and preserve contradictory/mixed cases rather than forcing
-a neat result. Store raw text, run metadata, coding rationale, and the actual
-distribution outside the repo, using the [blank worksheet](../templates/black-box-comparison.md).
-Do not invent distributions when no runs occurred. Five is a practical minimum,
-not a statistical validation threshold or guarantee of stable performance.
+Reconcile `attempted = successful + errors + refusals`. Report:
+- response-category proportions with **successful responses** as denominator
+  (preserving `uncertain` and `unresolved` as explicit categories; leave
+  unavailable if `successful == 0`);
+- error and refusal incidence with **attempted** as denominator.
+
+Print numerator and denominator for every proportion. Store raw transcripts,
+metadata, and analyst coding outside the repository using
+[`templates/black-box-comparison.md`](../templates/black-box-comparison.md) or
+`examples/black_box_checks.py`.

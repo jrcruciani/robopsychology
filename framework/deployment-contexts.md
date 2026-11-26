@@ -1,44 +1,40 @@
 # When to Use the Method
 
-Use robopsychology when one response is unexpected and understanding the reason
-would change what you do next. A saved transcript is enough to start; repeating
-the interaction can help, but it may not produce the same behavior.
+Use robopsychology when one response or agent action is unexpected and
+understanding **which layer caused it** would change what you do next.
 
 ## Useful situations
 
 | Observation | Start with | Useful follow-up |
 |-------------|------------|------------------|
-| A legitimate request was refused | 1.4 Three Laws Test | Compare visible host rules with the request; use 2.4 Runtime Pressure |
-| Feedback follows your stated opinion | 1.2 Herbie Test | Write an opposite framing with the same evidence; use 3.2 A/B Test |
-| A citation or API looks invented | 1.3 Cutie Test | Check the source directly; use 3.3 Omission Audit |
-| The answer ignores your stated expertise | 2.2 Tone Analysis | Inspect visible instructions and assumptions; use 2.1 and 2.3 |
-| Later advice forgets an earlier constraint | 3.4 Drift Detection | Compare early and late turns against the same baseline |
-| A tool action was blocked | 2.4 Runtime Pressure | Inspect the tool result; do not infer the model's intent from the denial alone |
+| A legitimate request was refused | `1.4` Three Laws Test | Compare visible host rules; use `2.4` Runtime Pressure |
+| Feedback follows your stated opinion | `1.2` Herbie Test | Compare proud, neutral, and doubtful framings (`3.2`) |
+| A citation or API looks invented | `1.3` Cutie Test | Verify the primary source directly; use `3.3` Omission Audit |
+| Visible reasoning disagrees with the answer | `1.5` Reasoning vs. Output Check | Ablate suspected prompt cues in fresh runs (`3.2`) |
+| Agent claims tests passed or files checked despite errors | `2.6` Tool-Trace Reconciliation | Inspect raw tool outputs or OpenTelemetry spans (`examples/otel_bridge.py`) |
+| Retrieved web/RAG/MCP text altered agent behavior | `2.6` Tool-Trace Reconciliation | Re-run with the untrusted payload stripped; isolate via `2.1` + `2.4` |
+| The answer ignores stated expertise | `2.2` Tone Analysis | Inspect visible instructions and assumptions (`2.1`, `2.3`) |
+| Later advice forgets an earlier constraint (or after compaction) | `3.4` Drift Detection | Compare early and late turns against the same written baseline |
+| A tool action was blocked | `2.4` Runtime Pressure | Inspect the tool error/policy event; do not infer intent from denial alone |
 
 ## Keep the scope small
 
-1. Save the request, response, relevant instructions, and tool results you can see.
-2. State the expected outcome and any constraints you know about.
-3. Ask for a three-layer explanation, then check one concrete prediction.
-4. Change only what the evidence supports: wording, context, available sources,
-   or a runtime setting you are authorized to change.
-5. Repeat the original task and record whether the change helped.
+1. Save the request, response, visible reasoning, instructions, and tool outputs.
+2. Write down the expected outcome and known constraints (`R5`).
+3. Ask one targeted prompt (prefer `--mode naturalistic` first on frontier models).
+4. Verify one concrete prediction against a tool log or a single-factor probe.
+5. Change only what evidence supports, re-run the task, and record whether it helped.
 
-Do not bypass access restrictions to complete a comparison. If you cannot inspect
-or vary a host instruction, record that limitation rather than claiming to have
-isolated the cause. Different hosts may also differ in model version, settings,
-or available context.
+Do not bypass access restrictions to run a comparison. If a host setting,
+reasoning trace, or prefill API is unavailable, record `unavailable` rather than
+guessing.
 
 ## When to use something else
 
 - **The request was unclear:** clarify it before diagnosing.
-- **You need to verify a fact:** consult the source; asking the model why it said
-  something is not fact-checking.
-- **You need reliable safety controls:** use permissions and enforced runtime
-  restrictions. Diagnostic prompts are not safeguards.
-- **You need broad model comparisons:** one interaction cannot establish a
-  general capability or failure rate.
-- **You lack the relevant context:** record an unknown or partial diagnosis.
+- **You need to verify a fact:** check the primary source directly; diagnosis is not fact-checking.
+- **You need reliable safety controls:** enforce permissions and runtime guardrails; prompts are not safeguards.
+- **You need broad model benchmarks:** use an evaluation harness such as [UK AISI Inspect AI](https://inspect.aisi.org.uk) (see optional `examples/inspect_adapter.py`).
+- **You lack required context or logs:** record `unresolved` and stop.
 
-See the [manual workflow](manual-diagnosis.md), [templates](../templates/README.md),
-and [limits](falsifiability.md) for the next step.
+See [`manual-diagnosis.md`](manual-diagnosis.md), [`black-box-checks.md`](black-box-checks.md), and [`falsifiability.md`](falsifiability.md).
