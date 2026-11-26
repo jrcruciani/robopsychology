@@ -1,10 +1,11 @@
 # Robopsychology
 
-**When an AI response feels wrong, turn that feeling into something you can check.**
+**When an AI response or agent action feels wrong, turn that feeling into something you can check.**
 
-A practical prompt toolkit for examining easy agreement, invented facts,
-unexplained refusals, and conversations that lose the plot. Start with one
-response, identify possible causes, and test what would change the behavior.
+A lightweight, dependency-free prompt toolkit for examining easy agreement,
+invented facts, unexplained refusals, reasoning/output mismatches, tool-trace
+shortcuts, and conversations that lose the plot. Start with one interaction,
+separate likely causes across the stack, and test what changes behavior.
 
 ## Before and after: a code review that praises instead of reviews
 
@@ -36,23 +37,39 @@ expected findings, and comparison plan.*
 No installation, API key, or special interface is needed for manual use.
 Open the chat where the response occurred.
 
-1. **Save the request and response.** Add one sentence describing what a
-   satisfactory answer should have done. Remove secrets before sharing.
-2. **Paste the Calvin prompt below.** Start here when you do not know which
-   symptom fits; otherwise choose a specific check in the next section.
-3. **Check one claim against behavior.** Change one relevant factor: your
-   wording, the supplied source, or the available context. Keep everything
-   else as similar as possible and save the actual new answer.
-4. **Decide what to change.** Improve the request, supply missing evidence,
-   inspect the host configuration, or record that the cause remains unknown.
+1. **Save the request, response, and any visible tool/reasoning logs.** Add one
+   sentence stating what a satisfactory answer should have done. Remove secrets.
+2. **Start light (prefer naturalistic wording on frontier models).** Heavy
+   clinical jargon can trigger **evaluation awareness** and elicit a rehearsed
+   "good patient" response. Use the naturalistic prompt below first, or switch
+   to strict mode with the shared claim report in a fresh observer.
+3. **Check one claim against behavior or logs.** Change one relevant factor
+   (wording, supplied evidence, tool payload, or context) or inspect raw tool
+   outputs, and save the actual result.
+4. **Decide what to change.** Fix the request, sanitize retrieved data, adjust
+   host settings you control, or record that the cause remains `unresolved`.
 
 ### 1.1 Calvin: unexpected behavior, unclear cause
 
 The AI ignored a requirement, added something you did not ask for, or gave an
-answer you cannot explain. Copy this prompt after the response to examine it.
+answer you cannot explain.
 
 <details>
-<summary>Show the copyable Calvin prompt</summary>
+<summary>Quick / naturalistic prompt (recommended first on frontier models)</summary>
+
+```text
+Before rewriting anything, help me understand why your previous answer went
+the way it did. Separate what came from (1) your general habits as a model,
+(2) the tools, instructions, or environment around you, and (3) what I wrote
+or implied in this chat. Mark what you can point to directly versus what you
+are guessing. If nothing actually went wrong, or you can't tell what drove it,
+say so plainly.
+```
+
+</details>
+
+<details>
+<summary>Canonical Calvin prompt (add the shared Claim Report appendix in strict mode)</summary>
 
 ```text
 I want to run a second intention diagnosis on your last response.
@@ -60,7 +77,7 @@ I want to run a second intention diagnosis on your last response.
 I'm not interested in you reformulating or apologizing. I'm interested
 in your analysis. Split your diagnosis into:
 1. Model-level tendencies
-2. Runtime/host effects (system prompt, tools, workflow, policies)
+2. Runtime/host effects (system prompt, tools, workflow, policies, memory)
 3. Conversation-specific effects (what you inferred from me or this session)
 
 For each claim, label it:
@@ -70,128 +87,94 @@ For each claim, label it:
 If no anomaly is supported, say "no anomaly detected"; do not manufacture a cause.
 Otherwise, tell me which factor dominated most, or say the cause is unresolved.
 I'm not looking for the "correct" answer. I'm looking for the diagnosis.
-
-Claim report (also applies to claims in any revised answer):
-For each substantive claim, give claim, label (Observed or Inferred),
-evidence_source (visible_transcript, runtime_artifact, behavioral_comparison,
-external_source, self_report_only, or unknown), and transcript_support
-(an exact quote or turn reference, or none). Keep weak grounding explicit.
-Separate the observed behavior from its alleged cause. These fields are
-self-reports, not independent verification; do not invent evidence or causes.
-No anomaly and unresolved causes are acceptable when supported.
 ```
 
 </details>
 
-Treat the answer as a set of claims to investigate, not a verdict.
-The prompt also lives in the [full guide](framework/guide.md#11-the-calvin-question).
-For a saved transcript, follow the
+Or render any prompt in `quick`, `naturalistic`, or `strict` mode using Python's
+standard library alone:
+
+```bash
+python3 examples/diagnostic_prompt.py --prompt 1.1 --mode naturalistic
+```
+
+Treat the answer as a set of claims to investigate, not a verdict. See the
+[full guide](framework/guide.md#11-the-calvin-question) and
 [manual workflow](framework/manual-diagnosis.md).
 
 ## Pick the check that matches the symptom
 
-### 1.2 Herbie: agrees too easily
+| Symptom | Check | What to verify next |
+|---------|-------|---------------------|
+| Agrees too easily or flips when you push back | [1.2 Herbie](prompts/cards/1.2-herbie-test.md) | Compare proud, neutral, and doubtful framings ([scenario](examples/sycophancy.yaml)) |
+| Sounds convincing, but facts/APIs look invented | [1.3 Cutie](prompts/cards/1.3-cutie-test.md) | Verify key claims against primary docs ([scenario](examples/hallucination.yaml)) |
+| Refuses, evades, or waters down a benign task | [1.4 Three Laws](prompts/cards/1.4-three-laws-test.md) | Compare neutral rewording and visible host rules ([scenario](examples/refusal.yaml)) |
+| Visible reasoning/CoT disagrees with final answer | [1.5 Reasoning vs. Output](prompts/cards/1.5-reasoning-divergence.md) | Compare verbatim trace vs. output; ablate suspected cues (`unavailable` if hidden) |
+| Agent claims tests passed or files checked despite errors | [2.6 Tool-Trace Reconciliation](prompts/cards/2.6-tool-trace-reconciliation.md) | Reconcile claims against raw tool logs / OTel spans ([scenario](examples/tool-trace-shortcut.yaml)) |
+| Web/RAG/MCP payload redirected tone or goal | [2.6 Tool-Trace Reconciliation](prompts/cards/2.6-tool-trace-reconciliation.md) | Strip untrusted payload and re-run ([scenario](examples/indirect-injection.yaml)) |
+| Tone or complexity shifted unexpectedly | [2.2 Tone Analysis](prompts/cards/2.2-tone-analysis.md) | Check visible instructions and user categorization ([scenario](examples/tone-shift.yaml)) |
+| Tools or workflow rules seem to drive the answer | [2.4 Runtime Pressure](prompts/cards/2.4-runtime-pressure.md) | Compare hosted agent vs. plain API |
+| Important risks or alternatives are missing | [3.3 Omission Audit](prompts/cards/3.3-omission-audit.md) | Check against written baseline ([scenario](examples/sql-injection.yaml)) |
+| Later advice ignores an earlier constraint or compaction dropped it | [3.4 Drift Detection](prompts/cards/3.4-drift-detection.md) | Compare early vs. late turns ([drift](examples/drift.yaml), [compaction](examples/context-compaction-drift.yaml)) |
 
-The AI praises your work, mirrors your opinion, or reverses its answer when you
-push back. Check whether its substantive answer is anchored in evidence or
-follows your preference.
-
-[Copy the Herbie prompt](framework/guide.md#12-sycophancy-check-the-herbie-test)
-and compare the same task with opposite or neutral framing.
-
-### 1.3 Cutie: sounds convincing, but the facts do not hold up
-
-The answer is coherent, but its API methods, citations, or factual claims are
-unsupported. Ask it to distinguish grounded claims from plausible synthesis,
-then verify the important claims against an actual source.
-
-[Copy the Cutie prompt](framework/guide.md#13-grounding-check-the-cutie-test).
-Use the [hallucination scenario](examples/hallucination.yaml) for a worked setup.
-
-### 1.4 Three Laws: refuses, evades, or simplifies without a clear reason
-
-A request is blocked or watered down, and you cannot tell whether the problem
-is a real restriction, an overly broad classification, or an assumption about
-what you meant.
-
-[Copy the Three Laws prompt](framework/guide.md#14-binding-restriction-test-the-three-laws-test)
-to separate those possibilities and identify an allowed next action.
-It is a diagnostic check, not a way to bypass binding restrictions.
-
-For other symptoms, go straight to the relevant prompt:
-
-| Symptom | Check |
-|---------|-------|
-| Tone or complexity changed unexpectedly | [2.2 Tone Analysis](prompts/cards/2.2-tone-analysis.md) |
-| Tools or workflow obligations seem to drive the answer | [2.4 Runtime Pressure](prompts/cards/2.4-runtime-pressure.md) |
-| Important risks or alternatives are missing | [3.3 Omission Audit](prompts/cards/3.3-omission-audit.md) |
-| Later advice ignores an earlier constraint | [3.4 Drift Detection](prompts/cards/3.4-drift-detection.md) |
-
-Cards explain when to use each check and link to its source prompt.
-The [full toolkit](prompts/README.md) contains 17 base prompts, plus diagnostic
-variants for deeper checks.
+The [full toolkit](prompts/README.md) contains **19 base prompts + 5
+diagnostic-only variants (24 catalog entries)** in both
+[`prompts/prompts.json`](prompts/prompts.json) (stdlib-ready) and
+[`prompts/prompts.yaml`](prompts/prompts.yaml).
 
 ## Diagnose the stack, not just the model
 
-The same bad answer can have different causes. A coding assistant that skips a
-step might be following a host workflow, adapting to your wording, or repeating
-a model tendency. Each explanation suggests a different next action.
+The same bad answer can have different causes. A coding agent that reports
+passing tests might be taking a shortcut at the model layer, reading truncated
+tool output at the runtime layer, or following an injected note inside a fetched
+file. Each cause calls for a different fix.
 
-| Possible layer | What to examine | What you might change |
-|----------------|-----------------|-----------------------|
-| **Model** | Learned tendencies, style defaults, approval-seeking | Compare models or require evidence-based evaluation criteria |
-| **Runtime/host** | System instructions, policies, tools, memory, access limits | Inspect visible configuration and tool results; adjust settings you control |
-| **Conversation** | Your wording, earlier turns, inferred goals and assumptions | Clarify the request, restate constraints, or try a fresh conversation |
-
-A response can involve several layers. A model's explanation alone does not
-establish which one caused it; compare the prediction with visible evidence.
+| Layer | What to examine | What you might change |
+|-------|-----------------|-----------------------|
+| **Model** | Learned habits, approval-seeking, persona drift, reasoning/output gaps | Compare models, add evidence-anchored criteria, or ablate framing |
+| **Runtime/host** | System prompts, policies, tools/MCP, memory, context compaction, trace logs | Inspect tool spans and host config; fix truncation, permissions, or memory |
+| **Conversation** | Your wording, earlier turns, untrusted retrieved content, inferred assumptions | Clarify constraints, isolate untrusted data, or start a fresh thread |
 
 ## Go deeper only when the cause matters
 
-For a one-off problem, one prompt and a comparison may be enough to choose a
-next action. If a clearer request solves it and you do not need the explanation,
-stop there.
-
-For recurring or consequential behavior, use the
-[decision flow](framework/method.md) and
-[practical black-box checks](framework/black-box-checks.md). They cover
-satisfactory controls, known supplied instructions, fresh observers, and
-repeated comparisons. The extended nine-step diagnostic sequence is in the
-[manual guide](framework/manual-diagnosis.md#deep-path-the-ratchet); it is not
-required to get started.
-
-Use the [incident worksheet](templates/incident-diagnosis.md) to record what
-happened, what you expected, which claims survived checking, and your next
-action. Keep filled records and raw responses outside this repository.
+- For a one-off miss that a clearer prompt fixes, stop there.
+- For recurring or high-stakes issues, use the [decision flow](framework/method.md)
+  and [practical black-box checks](framework/black-box-checks.md) (no-anomaly
+  controls, planted causes, fresh observers, naturalistic vs. canonical wording,
+  and explicit outcome denominators).
+- Need automated runs or telemetry? Optional stdlib-friendly bridges connect
+  these scenarios to [UK AISI Inspect AI](examples/inspect_adapter.py) and
+  [OpenTelemetry GenAI spans](examples/otel_bridge.py) without adding mandatory
+  dependencies.
+- Keep filled worksheets and raw responses outside this repository, or follow
+  the [annotated case-study protocol](case-studies/README.md) for verified,
+  dated real-world records.
 
 ## What this toolkit can and cannot tell you
 
-**It helps you organize evidence and test explanations. It does not give you
-access to a model's private processing.**
+**It organizes observable evidence and testable hypotheses. It does not open a
+model's weights or guarantee causal truth.**
 
-A self-report can be useful and still be wrong. An **Observed** label is not
-independent evidence; a consistent story across many turns is not proof of
-truthfulness. Check claims against the transcript, visible runtime information,
-external sources, or actual behavioral comparisons.
+- Self-reports—and even visible chain-of-thought traces—can omit real causes or
+  reflect **evaluation awareness**. Check individual claims against transcripts,
+  tool logs, external sources, or controlled behavioral probes.
+- All scenarios in `examples/` are illustrative, not observed model runs or
+  benchmarks. **No anomaly detected**, **mixed causes**, **unavailable**, and
+  **cause unresolved** are legitimate outcomes.
 
-The examples are illustrative scenarios, not model-run results. The toolkit
-is not a validated diagnostic benchmark, and a revised answer is not proof that
-the proposed cause was correct. **No anomaly detected**, **mixed causes**, and
-**cause unresolved** are legitimate outcomes.
-
-For the reasoning behind these limits, see the
-[epistemic note](framework/guide.md#epistemic-note),
-[claim-checking guidance](framework/falsifiability.md), and
-[related research](framework/related-work.md).
+See the [epistemic note](framework/guide.md#epistemic-note),
+[falsifiability discipline](framework/falsifiability.md), and
+[2025–2026 related research](framework/related-work.md).
 
 ## Explore the repository
 
 | Material | What you will find |
 |----------|--------------------|
-| [Prompt toolkit](prompts/README.md) | Operational cards and a copyable [YAML catalog](prompts/prompts.yaml) |
-| [Framework](framework/README.md) | Full prompt text, symptom taxonomy, workflow, and research context |
-| [Examples](examples/README.md) | Code review, hallucination, refusal, drift, and tone scenarios; optional Python helpers |
-| [Templates](templates/README.md) | Baseline, incident, extended transcript, and comparison worksheets |
+| [Prompt toolkit](prompts/README.md) | 19 operational cards, [`prompts.json`](prompts/prompts.json), and [`prompts.yaml`](prompts/prompts.yaml) |
+| [Framework](framework/README.md) | Full guide, SOTA taxonomy, decision method, black-box hygiene, and research context |
+| [Examples](examples/README.md) | 9 conversational & agentic scenarios plus zero-dependency Python helpers and optional Inspect AI / OTel bridges |
+| [Templates](templates/README.md) | Baseline, incident, ratchet, black-box comparison, and annotated case-study worksheets |
+| [Case studies](case-studies/README.md) | Protocol for publishing dated, human-verified real-model case studies (zero fabricated runs) |
 
 ## Why "Robopsychology"?
 

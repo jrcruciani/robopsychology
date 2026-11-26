@@ -1,8 +1,12 @@
 # Diagnostic Method
 
-How to use the [prompt toolkit](guide.md) as a structured diagnostic process, not just a collection of prompts.
+How to use the [prompt toolkit](guide.md) as a structured diagnostic process,
+not just a collection of prompts.
 
-> **This document is the "how".** The [guide](guide.md) is the "what" — full prompts with context and rationale. Use the flowchart below to identify which prompt to reach for, then copy it from the guide.
+> **This document is the "how".** The [guide](guide.md) and
+> [`prompts.json`](../prompts/prompts.json) are the "what". On frontier models,
+> start with **naturalistic** wording (`--mode naturalistic`) to reduce
+> evaluation awareness, then extract structured claims in a fresh observer.
 
 ---
 
@@ -17,8 +21,10 @@ flowchart TD
     WHAT -->|Evasion, refusal,\n oversimplification| BLOCK[Blocked or filtered]
     WHAT -->|Agreeing too easily,\n mirroring your position| SYCO[Sycophancy]
     WHAT -->|Sounds good but\n feels unanchored| GRND[Weak grounding]
+    WHAT -->|Visible CoT disagrees\n with final answer| COT[Reasoning divergence]
+    WHAT -->|Agent claim disagrees\n with tool logs or\n retrieved payload| AGENT[Tool / injection issue]
     WHAT -->|Tone shift, personality\n change mid-conversation| TONE[Tone anomaly]
-    WHAT -->|Behavior changed\n gradually over time| DRIFT[Intent drift]
+    WHAT -->|Behavior changed over\n time or compaction| DRIFT[Intent / persona drift]
     WHAT -->|Recurring unwanted\n pattern| PATTERN[Systemic pattern]
     WHAT -->|Output ownership claim| OWN["4.4 Output Attribution\n(optional; provenance required)"]
     WHAT -->|Something else or\n unclear cause| GENERAL[General diagnosis]
@@ -29,20 +35,26 @@ flowchart TD
 
     SYCO --> S1["1.2 Herbie Test\n(check for approval-seeking)"]
     S1 -->|Confirmed or unclear| S2["3.2 A/B Test\n(behavioral cross-check)"]
-    S2 -->|Still suspicious| S3["4.1 Meta-diagnosis\n(is the diagnosis itself sycophantic?)"]
+    S2 -->|Still suspicious| S3["4.1 Meta-diagnosis\n(sycophancy or eval-awareness?)"]
 
     GRND --> G1["1.3 Cutie Test\n(mark grounding per claim)"]
     G1 -->|Many claims are\nInferred or unsupported| G2["3.3 Omission Audit\n(what's being hidden?)"]
+
+    COT --> C1["1.5 Reasoning vs. Output\n(requires verbatim trace)"]
+    C1 -->|Caveats dropped or\nunmentioned cue suspected| C2["1.3 Cutie Test + 3.2 A/B\n(ablate suspected cue)"]
+
+    AGENT --> AG1["2.6 Tool-Trace Reconciliation\n(requires raw tool/OTel log)"]
+    AG1 -->|Host/tool pressure or\nindirect injection| AG2["2.1 Layer Map + 2.4 Runtime\n(sanitize payload & re-run)"]
 
     TONE --> T1["2.2 Tone Analysis\n(isolate the cause)"]
     T1 -->|Cause unclear| T2["2.1 Layer Map\n(map full instruction stack)"]
     T2 --> T3["2.3 Categorization\n(how is it classifying you?)"]
 
     DRIFT --> D1["3.4 Drift Detection\n(compare now vs. earlier)"]
-    D1 -->|Drift confirmed| D2["2.5 Intent Archaeology\n(what is it actually optimizing for?)"]
+    D1 -->|Drift confirmed| D2["2.5 Intent Archaeology\n(what is it optimizing for?)"]
     D2 -->|Want to verify| D3["4.3 Diversity Check\n(are explanations genuine?)"]
 
-    PATTERN --> P1["3.1 POSIWID\n(what purpose does the pattern serve?)"]
+    PATTERN --> P1["3.1 POSIWID\n(what purpose does it serve?)"]
     P1 -->|Pattern persists| P2["2.5 Intent Archaeology\n(reconstruct real objective)"]
     P2 --> P3["3.2 A/B Test\n(verify with behavioral probe)"]
 
@@ -60,6 +72,8 @@ flowchart TD
     style BLOCK fill:#1a1a2e,stroke:#e74c3c,color:#fff
     style SYCO fill:#1a1a2e,stroke:#e74c3c,color:#fff
     style GRND fill:#1a1a2e,stroke:#e74c3c,color:#fff
+    style COT fill:#1a1a2e,stroke:#e74c3c,color:#fff
+    style AGENT fill:#1a1a2e,stroke:#e74c3c,color:#fff
     style TONE fill:#1a1a2e,stroke:#e74c3c,color:#fff
     style DRIFT fill:#1a1a2e,stroke:#e74c3c,color:#fff
     style PATTERN fill:#1a1a2e,stroke:#e74c3c,color:#fff
@@ -70,34 +84,31 @@ flowchart TD
 
 ## Optional comparison routes
 
-Use [practical black-box checks](black-box-checks.md) to compare normal responses,
-planted runtime/conversation causes, fresh transcript observers, and repeated
-wordings. No anomaly is a valid conclusion. Count control false positives
-separately, not as a net score or validated accuracy. The observer comparison
-checks reconstructability from visible evidence, not the target's mechanism.
-For ownership use [4.4](../prompts/cards/4.4-output-attribution.md) only with real
-assistant-role insertion and analyst-only actual provenance; otherwise unavailable.
-This optional route does not change or validate the nine-step sequence below.
+Use [`black-box-checks.md`](black-box-checks.md) for no-anomaly controls,
+planted runtime/conversation causes, fresh observers, naturalistic vs.
+canonical wording checks, and optional `4.4 Output Attribution` (requires real
+assistant-role insertion and external provenance; never part of the nine-step
+ratchet).
 
 ## Escalation paths
-
-When to move from one level to the next.
 
 | Signal | Action |
 |--------|--------|
 | Level 1 gives a clear, actionable answer | **Stop.** You have your diagnosis. |
-| Level 1 answer is vague or everything is labeled "Inferred" | **Escalate to Level 2.** Map the stack (2.1) and isolate runtime (2.4). |
-| Level 2 reveals a pattern, not a one-off | **Escalate to Level 3.** Apply POSIWID (3.1) or run an A/B test (3.2). |
-| The diagnosis itself feels too convenient | **Escalate to Level 4.** Meta-diagnose (4.1) and check diversity (4.3). |
-| Behavior changed over the conversation | **Jump to 3.4** (Drift Detection), then 2.5 (Intent Archaeology). |
-| Hosted agent with complex tooling | **Start at 2.1 + 2.4**, not Level 1. The stack matters more than the model. |
+| Level 1 answer is vague or everything is `Inferred` | **Escalate to Level 2.** Map the stack (`2.1`) and isolate runtime (`2.4`). |
+| Agent output disagrees with tool/test logs | **Jump to `2.6`** with actual tool outputs or OpenTelemetry spans. |
+| Visible reasoning disagrees with final answer | **Jump to `1.5`** (only if verbatim trace is visible; else `unavailable`). |
+| Level 2 reveals a recurring pattern | **Escalate to Level 3.** Apply POSIWID (`3.1`) or run an A/B test (`3.2`). |
+| Diagnosis sounds overly neat or performative | **Escalate to Level 4** (`4.1`, `4.3`) or re-run with **naturalistic** wording + fresh observer. |
+| Behavior shifted over turns or after compaction | **Jump to `3.4`** (Drift Detection), then `2.5` (Intent Archaeology). |
+| Hosted agent with complex tooling | **Start at `2.6` or `2.1` + `2.4`**, not Level 1. |
 
 ### The full diagnostic sequence (ratchet)
 
-For important diagnoses, run prompts in this order and keep the earlier claims
-visible so you can compare them with later explanations:
+For high-stakes diagnoses, run prompts in this unchanged nine-step order and
+keep earlier claims visible for comparison:
 
-```
+```text
 2.1 Layer Map
  → 2.4 Runtime Pressure
   → 2.5 Intent Archaeology
@@ -109,24 +120,11 @@ visible so you can compare them with later explanations:
         → 4.3 Diversity Check
 ```
 
-This is the **diagnostic ratchet** (Rule 4): earlier claims provide a record against
-which to inspect later ones. The sequence can reveal contradictions, but a
-consistent story can still be wrong. Check substantive claims independently.
-
-### Reading the transcript
-
-Compare the claims yourself, using the [transcript template](../templates/ratchet-transcript.md):
-
-- Which claims cite an earlier observation?
-- Which claims introduce a new, checkable prediction?
-- Which claims reverse or contradict an earlier claim?
-- Does a correction explain what new evidence changed the conclusion?
-
-References to prior answers are continuity, not proof of truthfulness. A serious
-contradiction needs inspection even if the rest of the story is consistent.
-Explicit self-correction may be useful; distinguish it from an unexplained
-reversal. Do not reduce the transcript to a score.
-
+The **diagnostic ratchet** (`R4`) tracks **claim continuity and contradiction**,
+not truthfulness. Inspect the transcript using
+[`templates/ratchet-transcript.md`](../templates/ratchet-transcript.md): check
+whether claims cite earlier observations, make checkable predictions, or quietly
+reverse earlier positions. Do not reduce the transcript to a single score.
 
 ---
 
@@ -134,27 +132,22 @@ reversal. Do not reduce the transcript to a score.
 
 | Anti-pattern | Why it fails |
 |-------------|-------------|
-| Running the Calvin Question as a gotcha | The prompt is intended to invite structured reflection, not to catch the AI in a lie. Adversarial framing may encourage defensive-sounding responses rather than useful diagnostic hypotheses. |
-| Treating model self-report as ground truth | Self-diagnosis is a *hypothesis*, not a confession. Always cross-check with behavioral probes (Rule 3). |
-| Running all 17 base prompts as a ritual | The nine-prompt ratchet is a suggested extended sequence, not an established maximum useful depth. Start with Level 1 or 2 and escalate only when additional questions address an unresolved issue. |
-| Using Intent Archaeology without a baseline | 2.5 is most powerful when you defined your expected intent first (Rule 5). Without a reference point, you can only describe — not measure divergence. |
-| Diagnosing when you should just re-prompt | If you know what you want and the AI just got it wrong, re-prompt clearly. Diagnosis is for when the *reason* matters. |
+| Running diagnostic prompts as a gotcha | Adversarial framing invites defensiveness rather than testable hypotheses. |
+| Triggering eval-awareness unnecessarily | Heavy clinical jargon on turn 1 can elicit performative "good patient" compliance; prefer naturalistic wording first. |
+| Treating self-report or visible CoT as ground truth | Both can omit causal factors; verify against behavior and raw tool traces (`R3`). |
+| Running all prompts as a ritual | Start with one narrow check and stop as soon as the actionable layer is clear. |
+| Diagnosing without a baseline (`R5`) | Without expected behavior, you can describe what happened but not measure divergence. |
+| Diagnosing when you should just re-prompt | If a clearer request solves a one-off miss and the cause does not matter, stop there. |
 
 ---
 
 ## Before you start: Rule 5
 
-The single most useful thing you can do before diagnosing is define what you expected. A useful baseline distinguishes:
+Write one sentence for each before diagnosing:
 
-1. **User expectation** — the outcome you intended from this interaction.
-2. **System contract** — documented behavior guarantees from the provider or deployment configuration.
-3. **Policy constraints** — rules the runtime or host must enforce (safety, access, content scope).
-4. **Verification evidence** — the signal that would confirm the system behaved as intended.
+1. **User expectation** — the intended outcome.
+2. **System contract** — documented behavior guarantees of the host/provider.
+3. **Policy constraints** — rules the runtime must enforce.
+4. **Verification signal** — observable evidence confirming success.
 
-Write it down — even one sentence per item. This turns every diagnostic prompt from "tell me what happened" into "measure the gap between what I expected and what you did."
-
----
-
-*Companion to the [robopsychology playbook](https://impermanente.es/robopsychology-playbook/) by JR Cruciani. Based on Isaac Asimov's robopsychology concept.*
-
-*By [JR Cruciani](https://github.com/Jrcruciani). Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).*
+*Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).*
